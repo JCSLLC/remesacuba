@@ -11,7 +11,7 @@ const ADMIN_ID = process.env.ADMIN_ID;
 
 if (!BOT_TOKEN || !ADMIN_ID) {
   throw new Error(
-    "❌ Faltan BOT_TOKEN o ADMIN_ID en el archivo .env"
+    "❌ Faltan BOT_TOKEN o ADMIN_ID en .env"
   );
 }
 
@@ -44,7 +44,7 @@ function isValidPhone(phone) {
 }
 
 // ===============================
-// MENU PRINCIPAL
+// MENU
 // ===============================
 
 async function mainMenu(chatId) {
@@ -52,7 +52,7 @@ async function mainMenu(chatId) {
   return bot.sendMessage(
     chatId,
 `
-💸 *Remesas y Recargas Cuba*
+💸 *JCS Remesas y Recargas*
 
 🔥 Servicio rápido y seguro
 📱 Recargas nacionales e internacionales
@@ -148,7 +148,10 @@ bot.on("message", async (msg) => {
 
     if (text === "👮 Admin") {
 
-      if (String(chatId) !== String(ADMIN_ID)) {
+      if (
+        String(chatId) !==
+        String(ADMIN_ID)
+      ) {
 
         return bot.sendMessage(
           chatId,
@@ -158,11 +161,17 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-`👮 PANEL ADMIN
+`
+👮 *PANEL ADMIN*
 
-📦 Pedidos: ${orders.length}
-👥 Usuarios activos: ${Object.keys(users).length}`,
+📦 Pedidos:
+${orders.length}
+
+👥 Usuarios activos:
+${Object.keys(users).length}
+`,
 {
+  parse_mode: "Markdown",
   reply_markup: {
     keyboard: [
 
@@ -199,18 +208,89 @@ bot.on("message", async (msg) => {
         );
       }
 
-      let message = "📦 PEDIDOS\n\n";
+      for (const o of orders) {
 
-      orders.forEach((o, i) => {
+        let details = `
+━━━━━━━━━━━━━━━━━━
+📦 PEDIDO #${o.id}
+━━━━━━━━━━━━━━━━━━
 
-        message +=
-`${i + 1}. ${o.type}
-💰 ${o.total}
+📌 Estado:
+${o.status}
 
+👤 Usuario:
+@${o.username}
+
+📦 Tipo:
+${o.type}
 `;
-      });
 
-      return bot.sendMessage(chatId, message);
+        if (o.type === "Remesa") {
+
+          details += `
+
+💵 Monto:
+$${o.amount}
+
+📌 Comisión:
+$${o.commission}
+
+💰 Total:
+$${o.total}
+
+👤 Beneficiario:
+${o.name}
+
+📱 Teléfono:
+${o.phone}
+
+🏠 Dirección:
+${o.address}
+
+💳 Método:
+${o.payment}
+`;
+
+        } else {
+
+          details += `
+
+📱 Número:
+${o.phone}
+
+📦 Plan:
+${o.plan}
+
+💳 Pago:
+${o.payment}
+
+💰 Total:
+${o.total}
+`;
+        }
+
+        await bot.sendMessage(
+          chatId,
+          details,
+{
+  reply_markup: {
+    inline_keyboard: [
+
+      [
+        {
+          text: "✅ Confirmar",
+          callback_data:
+            `confirm_${o.id}`
+        }
+      ]
+
+    ]
+  }
+}
+        );
+      }
+
+      return;
     }
 
     // ===============================
@@ -225,18 +305,25 @@ bot.on("message", async (msg) => {
       let totalMoney = 0;
 
       orders.forEach((o) => {
-        totalMoney += Number(o.total || 0);
+        totalMoney += Number(
+          o.total || 0
+        );
       });
 
       return bot.sendMessage(
         chatId,
-`📊 ESTADÍSTICAS
+`
+📊 *ESTADÍSTICAS*
 
 📦 Pedidos:
 ${orders.length}
 
 💰 Total generado:
-${totalMoney}`
+${totalMoney}
+`,
+{
+  parse_mode: "Markdown"
+}
       );
     }
 
@@ -287,7 +374,8 @@ ${totalMoney}`
         text === "100"
       ) {
 
-        const amount = parseFloat(text);
+        const amount =
+          parseFloat(text);
 
         user.amount = amount;
 
@@ -295,17 +383,26 @@ ${totalMoney}`
           calculateCommission(amount);
 
         user.commission = commission;
-        user.total = amount + commission;
+        user.total =
+          amount + commission;
 
-        user.step = "remesa_payment";
+        user.step =
+          "remesa_payment";
 
         return bot.sendMessage(
           chatId,
-`💵 Monto: $${amount}
-📌 Comisión: $${commission}
-✅ Total: $${user.total}
+`
+💵 Monto:
+$${amount}
 
-💳 Seleccione método de pago`,
+📌 Comisión:
+$${commission}
+
+💰 Total:
+$${user.total}
+
+💳 Método de pago
+`,
 {
   reply_markup: {
     keyboard: [
@@ -326,17 +423,21 @@ ${totalMoney}`
         );
       }
 
-      if (text === "✍️ Personalizado") {
+      if (
+        text === "✍️ Personalizado"
+      ) {
 
         user.step = "amount";
 
         return bot.sendMessage(
           chatId,
-`✍️ Envíe el monto
+`
+✍️ Envíe monto personalizado
 
 Ejemplo:
 75
-150`
+150
+`
         );
       }
     }
@@ -347,7 +448,8 @@ Ejemplo:
 
     if (user.step === "amount") {
 
-      const amount = parseFloat(text);
+      const amount =
+        parseFloat(text);
 
       if (
         isNaN(amount) ||
@@ -366,17 +468,27 @@ Ejemplo:
         calculateCommission(amount);
 
       user.commission = commission;
-      user.total = amount + commission;
 
-      user.step = "remesa_payment";
+      user.total =
+        amount + commission;
+
+      user.step =
+        "remesa_payment";
 
       return bot.sendMessage(
         chatId,
-`💵 Monto: $${amount}
-📌 Comisión: $${commission}
-✅ Total: $${user.total}
+`
+💵 Monto:
+$${amount}
 
-💳 Método de pago`,
+📌 Comisión:
+$${commission}
+
+💰 Total:
+$${user.total}
+
+💳 Método de pago
+`,
 {
   reply_markup: {
     keyboard: [
@@ -402,22 +514,31 @@ Ejemplo:
     // ===============================
 
     if (
-      user.step === "remesa_payment" &&
+      user.step ===
+        "remesa_payment" &&
       text === "🅿️ PayPal"
     ) {
 
-      user.remesaPayment = "PayPal";
-      user.step = "remesa_screenshot";
+      user.remesaPayment =
+        "PayPal";
+
+      user.step =
+        "remesa_screenshot";
 
       return bot.sendMessage(
         chatId,
-`🅿️ PAYPAL
+`
+🅿️ *PAYPAL*
 
 🔗 https://www.paypal.com/paypalme/josecastineira00
 
 ⚠️ NO escribir nada en el pago
 
-📸 Envíe captura`
+📸 Envíe captura
+`,
+{
+  parse_mode: "Markdown"
+}
       );
     }
 
@@ -426,23 +547,32 @@ Ejemplo:
     // ===============================
 
     if (
-      user.step === "remesa_payment" &&
+      user.step ===
+        "remesa_payment" &&
       text === "🏦 Zelle"
     ) {
 
-      user.remesaPayment = "Zelle";
-      user.step = "remesa_screenshot";
+      user.remesaPayment =
+        "Zelle";
+
+      user.step =
+        "remesa_screenshot";
 
       return bot.sendMessage(
         chatId,
-`🏦 ZELLE
+`
+🏦 *ZELLE*
 
 👤 JCS LLC
 📱 +15026583021
 
 ⚠️ NO escribir nada en el pago
 
-📸 Envíe captura`
+📸 Envíe captura
+`,
+{
+  parse_mode: "Markdown"
+}
       );
     }
 
@@ -481,7 +611,9 @@ Ejemplo:
 
     if (text === "🇨🇺 Nacional") {
 
-      user.type = "Recarga Nacional";
+      user.type =
+        "Recarga Nacional";
+
       user.step = "plan";
 
       return bot.sendMessage(
@@ -515,9 +647,13 @@ Ejemplo:
     // RECARGA INTERNACIONAL
     // ===============================
 
-    if (text === "🌍 Internacional") {
+    if (
+      text === "🌍 Internacional"
+    ) {
 
-      user.type = "Recarga Internacional";
+      user.type =
+        "Recarga Internacional";
+
       user.step = "plan";
 
       return bot.sendMessage(
@@ -559,6 +695,7 @@ Ejemplo:
     ) {
 
       user.plan = text;
+
       user.step = "payment";
 
       return bot.sendMessage(
@@ -592,7 +729,8 @@ Ejemplo:
       user.step === "payment" &&
       (
         text === "💵 Efectivo" ||
-        text === "🏦 Transferencia"
+        text ===
+          "🏦 Transferencia"
       )
     ) {
 
@@ -600,22 +738,28 @@ Ejemplo:
 
       user.total = 1000;
 
-      user.step = "phone_recharge";
+      user.step =
+        "phone_recharge";
 
       return bot.sendMessage(
         chatId,
-`📱 Envíe número cubano
+`
+📱 Envíe número cubano
 
 Ejemplo:
-55112233`
+55112233
+`
       );
     }
 
     // ===============================
-    // NUMERO RECARGA
+    // TELEFONO RECARGA
     // ===============================
 
-    if (user.step === "phone_recharge") {
+    if (
+      user.step ===
+      "phone_recharge"
+    ) {
 
       if (!isValidPhone(text)) {
 
@@ -625,15 +769,18 @@ Ejemplo:
         );
       }
 
-      user.rechargePhone = `+53${text}`;
+      user.rechargePhone =
+        `+53${text}`;
 
       user.step = "screenshot";
 
       return bot.sendMessage(
         chatId,
-`📱 ${user.rechargePhone}
+`
+📱 ${user.rechargePhone}
 
-📸 Envíe captura`
+📸 Envíe captura
+`
       );
     }
 
@@ -685,69 +832,123 @@ Ejemplo:
 
       user.address = text;
 
+      const orderId = Date.now();
+
       orders.push({
+
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
         type: "Remesa",
+
         amount: user.amount,
+
+        commission:
+          user.commission,
+
         total: user.total,
+
+        payment:
+          user.remesaPayment,
+
+        name: user.name,
+
+        phone: user.phone,
+
+        address: user.address,
+
       });
 
       try {
 
-        if (user.remesaPhoto) {
-
-          await bot.sendPhoto(
-            ADMIN_ID,
-            user.remesaPhoto,
+        await bot.sendPhoto(
+          ADMIN_ID,
+          user.remesaPhoto,
 {
   caption:
-`🔥 NUEVA REMESA
+`
+🔥 NUEVA REMESA
 
-💵 Monto: ${user.amount}
-📌 Comisión: ${user.commission}
-💰 Total: ${user.total}
+🧾 Pedido:
+#${orderId}
+
+💵 Monto:
+$${user.amount}
+
+💰 Total:
+$${user.total}
 
 👤 ${user.name}
+
 📱 ${user.phone}
 
 🏠 ${user.address}
 
-💳 ${user.remesaPayment}`
+💳 ${user.remesaPayment}
+`
 }
-          );
+        );
 
-        } else {
-
-          await bot.sendMessage(
-            ADMIN_ID,
-`🔥 NUEVA REMESA
-
-💵 ${user.amount}
-💰 ${user.total}`
-          );
-
-        }
-
-      } catch (adminError) {
+      } catch (err) {
 
         console.log(
-          "ERROR ADMIN:",
-          adminError.message
+          "ADMIN ERROR:",
+          err.message
         );
 
       }
 
       await bot.sendMessage(
         chatId,
-`✅ REMESA ENVIADA
+`
+━━━━━━━━━━━━━━━━━━
+✅ *REMESA RECIBIDA*
+━━━━━━━━━━━━━━━━━━
 
-🧾 RECIBO
+🧾 *Pedido:*
+#${orderId}
 
-💵 ${user.amount}
-📌 Comisión: ${user.commission}
-💰 Total: ${user.total}
+💵 *Monto enviado:*
+$${user.amount}
 
-👤 ${user.name}
-📱 ${user.phone}`
+📌 *Comisión:*
+$${user.commission}
+
+💰 *Total pagado:*
+$${user.total}
+
+━━━━━━━━━━━━━━━━━━
+
+👤 *Beneficiario:*
+${user.name}
+
+📱 *Teléfono:*
+${user.phone}
+
+🏠 *Dirección:*
+${user.address}
+
+━━━━━━━━━━━━━━━━━━
+
+💳 *Método:*
+${user.remesaPayment}
+
+🕒 *Estado:*
+Pendiente
+
+━━━━━━━━━━━━━━━━━━
+🔥 *JCS Remesas y Recargas*
+`,
+{
+  parse_mode: "Markdown"
+}
       );
 
       delete users[chatId];
@@ -774,44 +975,80 @@ bot.on("photo", async (msg) => {
 
   try {
 
-    const chatId = msg.chat.id;
+    const chatId =
+      msg.chat.id;
 
     if (!users[chatId]) return;
 
-    const user = users[chatId];
+    const user =
+      users[chatId];
 
     const photo =
-      msg.photo[msg.photo.length - 1]?.file_id;
+      msg.photo[
+        msg.photo.length - 1
+      ]?.file_id;
 
     if (!photo) return;
 
     // ===============================
-    // REMESA FOTO
+    // FOTO REMESA
     // ===============================
 
-    if (user.step === "remesa_screenshot") {
+    if (
+      user.step ===
+      "remesa_screenshot"
+    ) {
 
-      user.remesaPhoto = photo;
+      user.remesaPhoto =
+        photo;
 
       user.step = "name";
 
       return bot.sendMessage(
         chatId,
-`✅ Captura recibida
+`
+✅ Captura recibida
 
-👤 Envíe nombre del familiar`
+👤 Envíe nombre del familiar
+`
       );
     }
 
     // ===============================
-    // RECARGA FOTO
+    // FOTO RECARGA
     // ===============================
 
-    if (user.step === "screenshot") {
+    if (
+      user.step === "screenshot"
+    ) {
+
+      const orderId =
+        Date.now();
 
       orders.push({
+
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
         type: "Recarga",
+
+        phone:
+          user.rechargePhone,
+
+        plan: user.plan,
+
+        payment:
+          user.payment,
+
         total: user.total,
+
       });
 
       try {
@@ -821,7 +1058,11 @@ bot.on("photo", async (msg) => {
           photo,
 {
   caption:
-`🔥 NUEVA RECARGA
+`
+🔥 NUEVA RECARGA
+
+🧾 Pedido:
+#${orderId}
 
 📱 ${user.rechargePhone}
 
@@ -829,26 +1070,53 @@ bot.on("photo", async (msg) => {
 
 💳 ${user.payment}
 
-💰 ${user.total}`
+💰 ${user.total}
+`
 }
         );
 
-      } catch (adminError) {
+      } catch (err) {
 
         console.log(
-          "ERROR ADMIN:",
-          adminError.message
+          "ADMIN ERROR:",
+          err.message
         );
 
       }
 
       await bot.sendMessage(
         chatId,
-`✅ RECARGA ENVIADA
+`
+━━━━━━━━━━━━━━━━━━
+✅ *RECARGA RECIBIDA*
+━━━━━━━━━━━━━━━━━━
 
-📱 ${user.rechargePhone}
-📦 ${user.plan}
-💰 ${user.total}`
+🧾 *Pedido:*
+#${orderId}
+
+📱 *Número:*
+${user.rechargePhone}
+
+📦 *Plan:*
+${user.plan}
+
+💳 *Método:*
+${user.payment}
+
+💰 *Total:*
+${user.total}
+
+━━━━━━━━━━━━━━━━━━
+
+🕒 *Estado:*
+Pendiente
+
+━━━━━━━━━━━━━━━━━━
+🔥 *JCS Remesas y Recargas*
+`,
+{
+  parse_mode: "Markdown"
+}
       );
 
       delete users[chatId];
@@ -866,16 +1134,141 @@ bot.on("photo", async (msg) => {
 });
 
 // ===============================
-// ERROR POLLING
+// CONFIRMAR PEDIDOS
 // ===============================
 
-bot.on("polling_error", (err) => {
+bot.on(
+  "callback_query",
+  async (query) => {
 
-  console.log(
-    "POLLING ERROR:",
-    err.message
-  );
+    try {
 
-});
+      const chatId =
+        query.message.chat.id;
 
-console.log("✅ BOT INICIADO");
+      if (
+        String(chatId) !==
+        String(ADMIN_ID)
+      ) {
+        return;
+      }
+
+      const data =
+        query.data;
+
+      if (
+        data.startsWith(
+          "confirm_"
+        )
+      ) {
+
+        const orderId =
+          Number(
+            data.split("_")[1]
+          );
+
+        const order =
+          orders.find(
+            (o) =>
+              o.id === orderId
+          );
+
+        if (!order) {
+
+          return bot.answerCallbackQuery(
+            query.id,
+            {
+              text:
+                "Pedido no encontrado",
+            }
+          );
+        }
+
+        order.status =
+          "Confirmado";
+
+        await bot.sendMessage(
+          order.clientId,
+`
+━━━━━━━━━━━━━━━━━━
+✅ *PEDIDO CONFIRMADO*
+━━━━━━━━━━━━━━━━━━
+
+🧾 *Pedido:*
+#${order.id}
+
+📦 *Tipo:*
+${order.type}
+
+🟢 *Estado:*
+Confirmado
+
+━━━━━━━━━━━━━━━━━━
+🔥 *Gracias por utilizar*
+*JCS Remesas y Recargas*
+`,
+{
+  parse_mode: "Markdown"
+}
+        );
+
+        await bot.editMessageReplyMarkup(
+          {
+            inline_keyboard: [
+              [
+                {
+                  text:
+                    "✅ Confirmado",
+                  callback_data:
+                    "confirmed",
+                },
+              ],
+            ],
+          },
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+        );
+
+        await bot.answerCallbackQuery(
+          query.id,
+          {
+            text:
+              "Pedido confirmado",
+          }
+        );
+      }
+
+    } catch (err) {
+
+      console.log(
+        "CALLBACK ERROR:",
+        err.message
+      );
+
+    }
+
+  }
+);
+
+// ===============================
+// POLLING ERROR
+// ===============================
+
+bot.on(
+  "polling_error",
+  (err) => {
+
+    console.log(
+      "POLLING ERROR:",
+      err.message
+    );
+
+  }
+);
+
+console.log(
+  "✅ BOT INICIADO"
+);
