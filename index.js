@@ -3,24 +3,13 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 
 // ===============================
-// VALIDAR VARIABLES
+// CONFIG
 // ===============================
 
-if (!process.env.BOT_TOKEN) {
-  console.log("❌ BOT_TOKEN faltante");
-  process.exit(1);
-}
+const BOT_TOKEN = process.env.BOT_TOKEN || "TU_TOKEN";
+const ADMIN_ID = "6794562791";
 
-if (!process.env.ADMIN_ID) {
-  console.log("❌ ADMIN_ID faltante");
-  process.exit(1);
-}
-
-// ===============================
-// BOT
-// ===============================
-
-const bot = new TelegramBot(process.env.BOT_TOKEN, {
+const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
 });
 
@@ -49,9 +38,14 @@ const users = {};
 // ===============================
 
 function calculateCommission(amount) {
+
+  // 1 a 49 = comisión fija 5
+
   if (amount >= 1 && amount <= 49) {
     return 5;
   }
+
+  // 50 en adelante = 10%
 
   return amount * 0.1;
 }
@@ -65,7 +59,9 @@ function isValidPhone(phone) {
 // ===============================
 
 bot.onText(/\/start/, async (msg) => {
+
   try {
+
     const chatId = msg.chat.id;
 
     users[chatId] = {};
@@ -85,26 +81,44 @@ Seleccione una opción:`,
         parse_mode: "Markdown",
         reply_markup: {
           inline_keyboard: [
+
             [
               {
-                text: "💵 Enviar Remesa",
+                text: "💵 Remesa",
                 callback_data: "remesa",
               },
-            ],
-            [
               {
-                text: "📱 Recargas",
+                text: "📱 Recarga",
                 callback_data: "recargas",
               },
             ],
+
+            [
+              {
+                text: "🆘 Soporte",
+                url: "https://t.me/JCS_LLC",
+              },
+            ],
+
+            [
+              {
+                text: "👮 Admin",
+                callback_data: "admin",
+              },
+            ],
+
           ],
         },
       }
     );
+
   } catch (err) {
+
     console.log("START ERROR:");
     console.log(err);
+
   }
+
 });
 
 // ===============================
@@ -112,7 +126,9 @@ Seleccione una opción:`,
 // ===============================
 
 bot.on("callback_query", async (query) => {
+
   try {
+
     await bot.answerCallbackQuery(query.id);
 
     if (!query.message) return;
@@ -126,16 +142,39 @@ bot.on("callback_query", async (query) => {
     const user = users[chatId];
 
     // ===============================
+    // ADMIN
+    // ===============================
+
+    if (query.data === "admin") {
+
+      if (String(chatId) !== String(ADMIN_ID)) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ Acceso denegado"
+        );
+      }
+
+      return bot.sendMessage(
+        chatId,
+        `👮 PANEL ADMIN
+
+✅ Bot funcionando correctamente`
+      );
+    }
+
+    // ===============================
     // REMESA
     // ===============================
 
     if (query.data === "remesa") {
+
       user.type = "Remesa";
       user.step = "amount";
 
       return bot.sendMessage(
         chatId,
-        "💵 Seleccione o Escriba un Monto:",
+        "💵 Seleccione o escriba un monto:",
         {
           reply_markup: {
             inline_keyboard: [
@@ -160,6 +199,7 @@ bot.on("callback_query", async (query) => {
     // ===============================
 
     if (query.data.startsWith("monto_")) {
+
       const amount = Number(query.data.split("_")[1]);
 
       if (!amount) {
@@ -186,10 +226,11 @@ bot.on("callback_query", async (query) => {
     }
 
     // ===============================
-    // MENU RECARGAS
+    // RECARGAS
     // ===============================
 
     if (query.data === "recargas") {
+
       return bot.sendMessage(
         chatId,
         "📱 Seleccione tipo:",
@@ -219,12 +260,37 @@ bot.on("callback_query", async (query) => {
     // ===============================
 
     if (query.data === "nacional") {
+
       user.type = "Recarga Nacional";
-      user.step = "phone_recharge";
+      user.step = "select_plan";
 
       return bot.sendMessage(
         chatId,
-        "📱 Escriba el número a Recargar \n\n"
+        "📦 Seleccione el plan nacional:",
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "120 CUP",
+                  callback_data: "plan_120",
+                },
+              ],
+              [
+                {
+                  text: "240 CUP",
+                  callback_data: "plan_240",
+                },
+              ],
+              [
+                {
+                  text: "360 CUP",
+                  callback_data: "plan_360",
+                },
+              ],
+            ],
+          },
+        }
       );
     }
 
@@ -233,12 +299,31 @@ bot.on("callback_query", async (query) => {
     // ===============================
 
     if (query.data === "internacional") {
+
       user.type = "Recarga Internacional";
-      user.step = "phone_recharge";
+      user.step = "select_plan";
 
       return bot.sendMessage(
         chatId,
-        "📱 Escriba el número a Recargar \n\n"
+        "🌍 Seleccione el plan internacional:",
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "Promoción",
+                  callback_data: "plan_120",
+                },
+              ],
+              [
+                {
+                  text: "Promoción 2",
+                  callback_data: "plan_240",
+                },
+              ],
+            ],
+          },
+        }
       );
     }
 
@@ -318,28 +403,44 @@ bot.on("callback_query", async (query) => {
       }
 
       user.total = precio;
-      user.step = "screenshot";
+      user.step = "phone_recharge";
+
+      if (metodo === "efectivo") {
+
+        return bot.sendMessage(
+          chatId,
+          `💳 MÉTODO: EFECTIVO
+
+📦 Plan: ${user.plan}
+
+💰 Total: ${precio}
+
+📱 Ahora envíe el número a recargar`
+        );
+      }
 
       return bot.sendMessage(
         chatId,
-        `💳 MÉTODO: ${metodo.toUpperCase()}
+        `💳 MÉTODO: TRANSFERENCIA
 
 📦 Plan: ${user.plan}
-📱 Número: ${user.rechargePhone}
 
 💰 Total: ${precio}
 
 🏦 Tarjeta:
 ${process.env.CARD_NUMBER || "NO CONFIG"}
 
-📸 Envíe captura del pago`
+📱 Ahora envíe el número a recargar`
       );
     }
 
   } catch (err) {
+
     console.log("CALLBACK ERROR:");
     console.log(err);
+
   }
+
 });
 
 // ===============================
@@ -347,7 +448,9 @@ ${process.env.CARD_NUMBER || "NO CONFIG"}
 // ===============================
 
 bot.on("message", async (msg) => {
+
   try {
+
     if (!msg.text) return;
 
     const chatId = msg.chat.id;
@@ -367,6 +470,7 @@ bot.on("message", async (msg) => {
       const amount = parseFloat(msg.text);
 
       if (isNaN(amount)) {
+
         return bot.sendMessage(
           chatId,
           "❌ Monto inválido"
@@ -384,7 +488,11 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-        "👤 Envíe nombre"
+        `💵 Monto: $${amount}
+📌 Comisión: $${commission}
+✅ Total: $${user.total}
+
+👤 Envíe nombre`
       );
     }
 
@@ -400,17 +508,18 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-        "📱 Envíe el teléfono de su Familiar "
+        "📱 Envíe el teléfono del familiar"
       );
     }
 
     // ===============================
-    // TELEFONO
+    // TELEFONO REMESA
     // ===============================
 
     if (user.step === "phone") {
 
       if (!isValidPhone(msg.text)) {
+
         return bot.sendMessage(
           chatId,
           "❌ Número inválido"
@@ -423,7 +532,7 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-        "🏠 Envíe la Dirección"
+        "🏠 Envíe la dirección"
       );
     }
 
@@ -437,17 +546,24 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-        "✅ Datos Recibidos"
+        `✅ DATOS RECIBIDOS
+
+👤 Nombre: ${user.name}
+📱 Teléfono: ${user.phone}
+🏠 Dirección: ${user.address}
+
+💵 Total a pagar: $${user.total}`
       );
     }
 
     // ===============================
-    // RECARGA TELEFONO
+    // TELEFONO RECARGA
     // ===============================
 
     if (user.step === "phone_recharge") {
 
       if (!isValidPhone(msg.text)) {
+
         return bot.sendMessage(
           chatId,
           "❌ Número inválido\n\nDebe contener 8 dígitos"
@@ -456,68 +572,40 @@ bot.on("message", async (msg) => {
 
       user.rechargePhone = `+53${msg.text}`;
 
-      user.step = "select_plan";
+      user.step = "screenshot";
 
-      if (user.type === "Recarga Nacional") {
+      if (user.payment === "efectivo") {
 
         return bot.sendMessage(
           chatId,
-          "📦 Seleccione el plan nacional:",
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "120 CUP",
-                    callback_data: "plan_120",
-                  },
-                ],
-                [
-                  {
-                    text: "240 CUP",
-                    callback_data: "plan_240",
-                  },
-                ],
-                [
-                  {
-                    text: "360 CUP",
-                    callback_data: "plan_360",
-                  },
-                ],
-              ],
-            },
-          }
+          `📦 Plan: ${user.plan}
+📱 Número: ${user.rechargePhone}
+
+💵 Pago en efectivo
+
+📸 Envíe foto/comprobante`
         );
       }
 
       return bot.sendMessage(
         chatId,
-        "🌍 Seleccione el plan internacional:",
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "Promocion",
-                  callback_data: "plan_120",
-                },
-              ],
-              [
-                {
-                  text: "Promocion 2",
-                  callback_data: "plan_240",
-                },
-              ],
-            ],
-          },
-        }
+        `📦 Plan: ${user.plan}
+📱 Número: ${user.rechargePhone}
+
+🏦 Transferencia:
+${process.env.CARD_NUMBER || "NO CONFIG"}
+
+📸 Envíe captura del pago`
       );
     }
 
   } catch (err) {
+
     console.log("MESSAGE ERROR:");
     console.log(err);
+
   }
+
 });
 
 // ===============================
@@ -525,6 +613,7 @@ bot.on("message", async (msg) => {
 // ===============================
 
 bot.on("photo", async (msg) => {
+
   try {
 
     const chatId = msg.chat.id;
@@ -539,7 +628,7 @@ bot.on("photo", async (msg) => {
     if (!photo) return;
 
     await bot.sendPhoto(
-      process.env.ADMIN_ID,
+      ADMIN_ID,
       photo,
       {
         caption:
@@ -560,9 +649,12 @@ bot.on("photo", async (msg) => {
     delete users[chatId];
 
   } catch (err) {
+
     console.log("PHOTO ERROR:");
     console.log(err);
+
   }
+
 });
 
 // ===============================
@@ -570,8 +662,10 @@ bot.on("photo", async (msg) => {
 // ===============================
 
 bot.on("polling_error", (err) => {
+
   console.log("POLLING ERROR:");
   console.log(err.message);
+
 });
 
 console.log("✅ BOT INICIADO");
