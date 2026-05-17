@@ -6,7 +6,7 @@ const TelegramBot = require("node-telegram-bot-api");
 // CONFIG
 // ===============================
 
-const BOT_TOKEN = process.env.BOT_TOKEN || "TU_TOKEN";
+const BOT_TOKEN = process.env.BOT_TOKEN || "8908816666:AAHlljrxy7VG15_zOl7UoVNVb0BziY0bmtg";
 const ADMIN_ID = "6794562791";
 
 const bot = new TelegramBot(BOT_TOKEN, {
