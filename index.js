@@ -52,7 +52,7 @@ async function mainMenu(chatId) {
   return bot.sendMessage(
     chatId,
 `
-            JCS
+            
       Remesas y Recarga
 
 
