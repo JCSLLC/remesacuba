@@ -281,6 +281,12 @@ ${o.total}
           text: "✅ Confirmar",
           callback_data:
             `confirm_${o.id}`
+        },
+
+        {
+          text: "🗑 Eliminar",
+          callback_data:
+            `delete_${o.id}`
         }
       ]
 
@@ -908,43 +914,13 @@ $${user.total}
       await bot.sendMessage(
         chatId,
 `
-━━━━━━━━━━━━━━━━━━
-✅ *REMESA RECIBIDA*
-━━━━━━━━━━━━━━━━━━
+✅ REMESA RECIBIDA
 
-🧾 *Pedido:*
+🧾 Pedido:
 #${orderId}
 
-💵 *Monto enviado:*
-$${user.amount}
-
-📌 *Comisión:*
-$${user.commission}
-
-💰 *Total pagado:*
-$${user.total}
-
-━━━━━━━━━━━━━━━━━━
-
-👤 *Beneficiario:*
-${user.name}
-
-📱 *Teléfono:*
-${user.phone}
-
-🏠 *Dirección:*
-${user.address}
-
-━━━━━━━━━━━━━━━━━━
-
-💳 *Método:*
-${user.remesaPayment}
-
-🕒 *Estado:*
+🕒 Estado:
 Pendiente
-
-━━━━━━━━━━━━━━━━━━
-🔥 *JCS Remesas y Recargas*
 `,
 {
   parse_mode: "Markdown"
@@ -1087,32 +1063,13 @@ bot.on("photo", async (msg) => {
       await bot.sendMessage(
         chatId,
 `
-━━━━━━━━━━━━━━━━━━
-✅ *RECARGA RECIBIDA*
-━━━━━━━━━━━━━━━━━━
+✅ RECARGA RECIBIDA
 
-🧾 *Pedido:*
+🧾 Pedido:
 #${orderId}
 
-📱 *Número:*
-${user.rechargePhone}
-
-📦 *Plan:*
-${user.plan}
-
-💳 *Método:*
-${user.payment}
-
-💰 *Total:*
-${user.total}
-
-━━━━━━━━━━━━━━━━━━
-
-🕒 *Estado:*
+🕒 Estado:
 Pendiente
-
-━━━━━━━━━━━━━━━━━━
-🔥 *JCS Remesas y Recargas*
 `,
 {
   parse_mode: "Markdown"
@@ -1134,7 +1091,7 @@ Pendiente
 });
 
 // ===============================
-// CONFIRMAR PEDIDOS
+// CALLBACKS
 // ===============================
 
 bot.on(
@@ -1155,6 +1112,10 @@ bot.on(
 
       const data =
         query.data;
+
+      // ===============================
+      // CONFIRMAR
+      // ===============================
 
       if (
         data.startsWith(
@@ -1202,10 +1163,6 @@ ${order.type}
 
 🟢 *Estado:*
 Confirmado
-
-━━━━━━━━━━━━━━━━━━
-🔥 *Gracias por utilizar*
-*JCS Remesas y Recargas*
 `,
 {
   parse_mode: "Markdown"
@@ -1237,6 +1194,91 @@ Confirmado
           {
             text:
               "Pedido confirmado",
+          }
+        );
+      }
+
+      // ===============================
+      // ELIMINAR PEDIDO
+      // ===============================
+
+      if (
+        data.startsWith(
+          "delete_"
+        )
+      ) {
+
+        const orderId =
+          Number(
+            data.split("_")[1]
+          );
+
+        const index =
+          orders.findIndex(
+            (o) =>
+              o.id === orderId
+          );
+
+        if (index === -1) {
+
+          return bot.answerCallbackQuery(
+            query.id,
+            {
+              text:
+                "Pedido no encontrado",
+            }
+          );
+        }
+
+        const deletedOrder =
+          orders[index];
+
+        orders.splice(index, 1);
+
+        if (query.message.photo) {
+
+          await bot.editMessageCaption(
+`
+❌ PEDIDO ELIMINADO
+
+🧾 Pedido:
+#${deletedOrder.id}
+
+📦 Tipo:
+${deletedOrder.type}
+`,
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+          );
+
+        } else {
+
+          await bot.editMessageText(
+`
+❌ PEDIDO ELIMINADO
+
+🧾 Pedido:
+#${deletedOrder.id}
+
+📦 Tipo:
+${deletedOrder.type}
+`,
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+          );
+        }
+
+        await bot.answerCallbackQuery(
+          query.id,
+          {
+            text:
+              "Pedido eliminado",
           }
         );
       }
