@@ -135,7 +135,7 @@ bot.on("callback_query", async (query) => {
 
       return bot.sendMessage(
         chatId,
-        "💵 Escribe el Monto o Seleccione:",
+        "💵 Envíe monto o seleccione:",
         {
           reply_markup: {
             inline_keyboard: [
@@ -224,7 +224,7 @@ bot.on("callback_query", async (query) => {
 
       return bot.sendMessage(
         chatId,
-        "📱 Envíe el número del Familiar\n\n
+        "📱 Envíe el número cubano\n\nEjemplo: 51234567"
       );
     }
 
@@ -238,7 +238,7 @@ bot.on("callback_query", async (query) => {
 
       return bot.sendMessage(
         chatId,
-        "📱 Envíe el número del Familiar\n\n
+        "📱 Envíe el número cubano\n\nEjemplo: 51234567"
       );
     }
 
@@ -299,17 +299,17 @@ bot.on("callback_query", async (query) => {
         }
 
         if (user.plan === "360") {
-          precio = 2000;
+          precio = 1500;
         }
 
       } else {
 
         if (user.plan === "120") {
-          precio = 500;
+          precio = 600;
         }
 
         if (user.plan === "240") {
-          precio = 1000;
+          precio = 1400;
         }
 
         if (user.plan === "360") {
@@ -480,7 +480,7 @@ bot.on("message", async (msg) => {
                 ],
                 [
                   {
-                    text: "360 CUP",
+                    text: "360x",
                     callback_data: "plan_360",
                   },
                 ],
