@@ -51,9 +51,10 @@ async function mainMenu(chatId) {
 
   return bot.sendMessage(
     chatId,
-`Proyecto✓
+`                 JCS 
+           Remesas y Recarga
 
-_Este es un bot que se encarga de remesas y recargas para Cuba._
+_Este es un bot de Remesas y Recargas para Cuba._
 
 🔥 Servicio rápido y seguro
 📱 Recargas nacionales e internacionales
