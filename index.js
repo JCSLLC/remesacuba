@@ -8,7 +8,7 @@ const TelegramBot = require("node-telegram-bot-api");
 
 const BOT_TOKEN =
   process.env.BOT_TOKEN ||
-  "8908816666:AAHlljrxy7VG15_zOl7UoVNVb0BziY0bmtg";
+  "TU_TOKEN_AQUI";
 
 const ADMIN_ID = "6794562791";
 
@@ -51,10 +51,10 @@ async function mainMenu(chatId) {
 
   return bot.sendMessage(
     chatId,
-`\`\`\`
-          JCS
-  Remesas y Recarga
-\`\`\`
+`
+            JCS
+      Remesas y Recarga
+
 
 _Este es un bot de Remesas y Recargas para Cuba._
 
@@ -679,7 +679,30 @@ ${user.address}`
 
       await bot.sendMessage(
         chatId,
-        "✅ Remesa enviada correctamente"
+`✅ REMESA ENVIADA CORRECTAMENTE
+
+🧾 RECIBO
+
+━━━━━━━━━━━━━━
+💵 Tipo: Remesa
+💰 Monto: $${user.amount}
+📌 Comisión: $${user.commission}
+💳 Total Pagado: $${user.total}
+
+💳 Método de Pago:
+${user.remesaPayment}
+
+👤 Beneficiario:
+${user.name}
+
+📱 Teléfono:
+${user.phone}
+
+🏠 Dirección:
+${user.address}
+━━━━━━━━━━━━━━
+
+🔥 Gracias por utilizar JCS Remesas y Recargas`
       );
 
       delete users[chatId];
@@ -760,7 +783,28 @@ ${user.total}`
 
       await bot.sendMessage(
         chatId,
-        "✅ Recarga enviada correctamente"
+`✅ RECARGA ENVIADA CORRECTAMENTE
+
+🧾 RECIBO
+
+━━━━━━━━━━━━━━
+📦 Tipo:
+${user.type}
+
+📱 Número:
+${user.rechargePhone}
+
+📦 Plan:
+${user.plan}
+
+💳 Método de Pago:
+${user.payment}
+
+💰 Total:
+${user.total}
+━━━━━━━━━━━━━━
+
+🔥 Gracias por utilizar JCS Remesas y Recargas`
       );
 
       delete users[chatId];
