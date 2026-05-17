@@ -6,7 +6,10 @@ const TelegramBot = require("node-telegram-bot-api");
 // CONFIG
 // ===============================
 
-const BOT_TOKEN = process.env.BOT_TOKEN || "8908816666:AAHlljrxy7VG15_zOl7UoVNVb0BziY0bmtg";
+const BOT_TOKEN =
+  process.env.BOT_TOKEN ||
+  "TU_TOKEN_AQUI";
+
 const ADMIN_ID = "6794562791";
 
 const bot = new TelegramBot(BOT_TOKEN, {
@@ -39,13 +42,13 @@ const users = {};
 
 function calculateCommission(amount) {
 
-  // 1 a 49 = comisión fija 5
+  // 1 - 49 = fijo 5
 
   if (amount >= 1 && amount <= 49) {
     return 5;
   }
 
-  // 50 en adelante = 10%
+  // 50+ = 10%
 
   return amount * 0.1;
 }
@@ -213,7 +216,7 @@ bot.on("callback_query", async (query) => {
       user.commission = commission;
       user.total = amount + commission;
 
-      user.step = "name";
+      user.step = "remesa_payment";
 
       return bot.sendMessage(
         chatId,
@@ -221,7 +224,74 @@ bot.on("callback_query", async (query) => {
 📌 Comisión: $${commission}
 ✅ Total: $${user.total}
 
-👤 Envíe nombre del familiar`
+💳 Seleccione método de pago:`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+
+              [
+                {
+                  text: "🅿️ PayPal",
+                  callback_data: "remesa_paypal",
+                },
+              ],
+
+              [
+                {
+                  text: "🏦 Zelle",
+                  callback_data: "remesa_zelle",
+                },
+              ],
+
+            ],
+          },
+        }
+      );
+    }
+
+    // ===============================
+    // PAYPAL
+    // ===============================
+
+    if (query.data === "remesa_paypal") {
+
+      user.remesaPayment = "PayPal";
+      user.step = "remesa_screenshot";
+
+      return bot.sendMessage(
+        chatId,
+        `🅿️ Pago por PayPal
+
+🔗 Link:
+https://www.paypal.com/paypalme/josecastineira00
+
+⚠️ IMPORTANTE:
+NO poner nada relacionado al pago.
+
+📸 Después de pagar envíe captura de pantalla`
+      );
+    }
+
+    // ===============================
+    // ZELLE
+    // ===============================
+
+    if (query.data === "remesa_zelle") {
+
+      user.remesaPayment = "Zelle";
+      user.step = "remesa_screenshot";
+
+      return bot.sendMessage(
+        chatId,
+        `🏦 Pago por Zelle
+
+👤 Nombre: JCS LLC
+📱 Número: +15026583021
+
+⚠️ IMPORTANTE:
+NO poner nada relacionado al pago.
+
+📸 Después de pagar envíe captura de pantalla`
       );
     }
 
@@ -362,7 +432,7 @@ bot.on("callback_query", async (query) => {
     }
 
     // ===============================
-    // PAGOS
+    // PAGOS RECARGA
     // ===============================
 
     if (query.data.startsWith("pago_")) {
@@ -405,6 +475,8 @@ bot.on("callback_query", async (query) => {
       user.total = precio;
       user.step = "phone_recharge";
 
+      // EFECTIVO
+
       if (metodo === "efectivo") {
 
         return bot.sendMessage(
@@ -418,6 +490,8 @@ bot.on("callback_query", async (query) => {
 📱 Ahora envíe el número a recargar`
         );
       }
+
+      // TRANSFERENCIA
 
       return bot.sendMessage(
         chatId,
@@ -462,7 +536,7 @@ bot.on("message", async (msg) => {
     if (msg.text === "/start") return;
 
     // ===============================
-    // MONTO REMESA
+    // MONTO REMESA MANUAL
     // ===============================
 
     if (user.step === "amount") {
@@ -484,7 +558,7 @@ bot.on("message", async (msg) => {
       user.commission = commission;
       user.total = amount + commission;
 
-      user.step = "name";
+      user.step = "remesa_payment";
 
       return bot.sendMessage(
         chatId,
@@ -492,12 +566,33 @@ bot.on("message", async (msg) => {
 📌 Comisión: $${commission}
 ✅ Total: $${user.total}
 
-👤 Envíe nombre`
+💳 Seleccione método de pago:`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+
+              [
+                {
+                  text: "🅿️ PayPal",
+                  callback_data: "remesa_paypal",
+                },
+              ],
+
+              [
+                {
+                  text: "🏦 Zelle",
+                  callback_data: "remesa_zelle",
+                },
+              ],
+
+            ],
+          },
+        }
       );
     }
 
     // ===============================
-    // NOMBRE
+    // NOMBRE REMESA
     // ===============================
 
     if (user.step === "name") {
@@ -552,7 +647,7 @@ bot.on("message", async (msg) => {
 📱 Teléfono: ${user.phone}
 🏠 Dirección: ${user.address}
 
-💵 Total a pagar: $${user.total}`
+💵 Total pagado: $${user.total}`
       );
     }
 
@@ -627,16 +722,38 @@ bot.on("photo", async (msg) => {
 
     if (!photo) return;
 
+    // ===============================
+    // CAPTURA REMESA
+    // ===============================
+
+    if (user.step === "remesa_screenshot") {
+
+      user.remesaPhoto = photo;
+
+      user.step = "name";
+
+      return bot.sendMessage(
+        chatId,
+        `✅ Captura recibida
+
+👤 Ahora envíe el nombre del familiar`
+      );
+    }
+
+    // ===============================
+    // ENVIO ADMIN
+    // ===============================
+
     await bot.sendPhoto(
       ADMIN_ID,
-      photo,
+      user.remesaPhoto || photo,
       {
         caption:
           `🔥 NUEVA OPERACIÓN\n\n` +
           `📌 Tipo: ${user.type || "N/A"}\n` +
+          `💳 Método: ${user.remesaPayment || user.payment || "N/A"}\n` +
           `📦 Plan: ${user.plan || "N/A"}\n` +
           `📱 Número: ${user.rechargePhone || user.phone || "N/A"}\n` +
-          `💳 Pago: ${user.payment || "N/A"}\n` +
           `💵 Total: ${user.total || "N/A"}`
       }
     );
