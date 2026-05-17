@@ -8,7 +8,7 @@ const TelegramBot = require("node-telegram-bot-api");
 
 const BOT_TOKEN =
   process.env.BOT_TOKEN ||
-  "8908816666:AAHlljrxy7VG15_zOl7UoVNVb0BziY0bmtg";
+  "TU_TOKEN_AQUI";
 
 const ADMIN_ID = "6794562791";
 
@@ -51,8 +51,10 @@ async function mainMenu(chatId) {
 
   return bot.sendMessage(
     chatId,
-`                 JCS 
-           Remesas y Recarga
+`\`\`\`
+          JCS
+  Remesas y Recarga
+\`\`\`
 
 _Este es un bot de Remesas y Recargas para Cuba._
 
@@ -126,6 +128,8 @@ bot.on("message", async (msg) => {
 
     if (text === "⬅️ Volver") {
 
+      users[chatId] = {};
+
       return mainMenu(chatId);
     }
 
@@ -157,7 +161,7 @@ bot.on("message", async (msg) => {
 
       return bot.sendMessage(
         chatId,
-        `👮 PANEL ADMIN
+`👮 PANEL ADMIN
 
 ✅ Bot funcionando correctamente`
       );
@@ -170,21 +174,100 @@ bot.on("message", async (msg) => {
     if (text === "💵 Remesa") {
 
       user.type = "Remesa";
-      user.step = "amount";
+      user.step = "amount_select";
 
       return bot.sendMessage(
         chatId,
-`💵 Envíe un monto
+`💵 Seleccione un monto`,
+{
+  reply_markup: {
+    keyboard: [
 
-Ejemplo:
-50
-100
-200`
+      [
+        "50",
+        "100"
+      ],
+
+      [
+        "✍️ Personalizado"
+      ],
+
+      [
+        "⬅️ Volver"
+      ],
+
+    ],
+    resize_keyboard: true,
+  },
+}
       );
     }
 
     // ===============================
-    // MONTO REMESA
+    // SELECCION MONTO REMESA
+    // ===============================
+
+    if (user.step === "amount_select") {
+
+      if (text === "50" || text === "100") {
+
+        const amount = parseFloat(text);
+
+        user.amount = amount;
+
+        const commission =
+          calculateCommission(amount);
+
+        user.commission = commission;
+        user.total = amount + commission;
+
+        user.step = "remesa_payment";
+
+        return bot.sendMessage(
+          chatId,
+`💵 Monto: $${amount}
+📌 Comisión: $${commission}
+✅ Total: $${user.total}
+
+💳 Seleccione método de pago`,
+{
+  reply_markup: {
+    keyboard: [
+
+      [
+        "🅿️ PayPal",
+        "🏦 Zelle"
+      ],
+
+      [
+        "⬅️ Volver"
+      ],
+
+    ],
+    resize_keyboard: true,
+  },
+}
+        );
+      }
+
+      if (text === "✍️ Personalizado") {
+
+        user.step = "amount";
+
+        return bot.sendMessage(
+          chatId,
+`✍️ Envíe el monto personalizado
+
+Ejemplo:
+75
+150
+250`
+        );
+      }
+    }
+
+    // ===============================
+    // MONTO PERSONALIZADO REMESA
     // ===============================
 
     if (user.step === "amount") {
@@ -471,8 +554,6 @@ NO poner nada relacionado al pago.
       user.total = total;
       user.step = "phone_recharge";
 
-      // EFECTIVO
-
       if (text === "💵 Efectivo") {
 
         return bot.sendMessage(
@@ -485,8 +566,6 @@ NO poner nada relacionado al pago.
 📱 Ahora envíe el número`
         );
       }
-
-      // TRANSFERENCIA
 
       return bot.sendMessage(
         chatId,
