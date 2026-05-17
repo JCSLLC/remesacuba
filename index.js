@@ -9,6 +9,12 @@ const TelegramBot = require("node-telegram-bot-api");
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
 
+if (!BOT_TOKEN || !ADMIN_ID) {
+  throw new Error(
+    "❌ Faltan BOT_TOKEN o ADMIN_ID en el archivo .env"
+  );
+}
+
 const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
 });
@@ -46,13 +52,11 @@ async function mainMenu(chatId) {
   return bot.sendMessage(
     chatId,
 `
-💸 *Remesas y Recargas*
-
-_Este es un bot de Remesas y Recargas para Cuba._
+💸 *Remesas y Recargas Cuba*
 
 🔥 Servicio rápido y seguro
 📱 Recargas nacionales e internacionales
-💸 Remesas automáticas
+💵 Remesas automáticas
 `,
 {
   parse_mode: "Markdown",
@@ -156,19 +160,14 @@ bot.on("message", async (msg) => {
         chatId,
 `👮 PANEL ADMIN
 
-📦 Pedidos guardados: ${orders.length}
-👥 Usuarios activos: ${Object.keys(users).length}
-
-Seleccione una opción`,
+📦 Pedidos: ${orders.length}
+👥 Usuarios activos: ${Object.keys(users).length}`,
 {
   reply_markup: {
     keyboard: [
 
       [
-        "📦 Pedidos"
-      ],
-
-      [
+        "📦 Pedidos",
         "📊 Estadísticas"
       ],
 
@@ -206,16 +205,12 @@ Seleccione una opción`,
 
         message +=
 `${i + 1}. ${o.type}
-
 💰 ${o.total}
 
 `;
       });
 
-      return bot.sendMessage(
-        chatId,
-        message
-      );
+      return bot.sendMessage(chatId, message);
     }
 
     // ===============================
@@ -227,11 +222,9 @@ Seleccione una opción`,
       String(chatId) === String(ADMIN_ID)
     ) {
 
-      const totalOrders = orders.length;
-
       let totalMoney = 0;
 
-      orders.forEach(o => {
+      orders.forEach((o) => {
         totalMoney += Number(o.total || 0);
       });
 
@@ -240,7 +233,7 @@ Seleccione una opción`,
 `📊 ESTADÍSTICAS
 
 📦 Pedidos:
-${totalOrders}
+${orders.length}
 
 💰 Total generado:
 ${totalMoney}`
@@ -289,7 +282,10 @@ ${totalMoney}`
 
     if (user.step === "amount_select") {
 
-      if (text === "50" || text === "100") {
+      if (
+        text === "50" ||
+        text === "100"
+      ) {
 
         const amount = parseFloat(text);
 
@@ -336,12 +332,11 @@ ${totalMoney}`
 
         return bot.sendMessage(
           chatId,
-`✍️ Envíe el monto personalizado
+`✍️ Envíe el monto
 
 Ejemplo:
 75
-150
-250`
+150`
         );
       }
     }
@@ -354,7 +349,10 @@ Ejemplo:
 
       const amount = parseFloat(text);
 
-      if (isNaN(amount)) {
+      if (
+        isNaN(amount) ||
+        amount <= 0
+      ) {
 
         return bot.sendMessage(
           chatId,
@@ -378,7 +376,7 @@ Ejemplo:
 📌 Comisión: $${commission}
 ✅ Total: $${user.total}
 
-💳 Seleccione método de pago`,
+💳 Método de pago`,
 {
   reply_markup: {
     keyboard: [
@@ -415,13 +413,11 @@ Ejemplo:
         chatId,
 `🅿️ PAYPAL
 
-🔗 Link:
-https://www.paypal.com/paypalme/josecastineira00
+🔗 https://www.paypal.com/paypalme/josecastineira00
 
-⚠️ IMPORTANTE
-NO poner nada relacionado al pago.
+⚠️ NO escribir nada en el pago
 
-📸 Después de pagar envíe captura`
+📸 Envíe captura`
       );
     }
 
@@ -441,16 +437,12 @@ NO poner nada relacionado al pago.
         chatId,
 `🏦 ZELLE
 
-👤 Nombre:
-JCS LLC
+👤 JCS LLC
+📱 +15026583021
 
-📱 Número:
-+15026583021
+⚠️ NO escribir nada en el pago
 
-⚠️ IMPORTANTE
-NO poner nada relacionado al pago.
-
-📸 Después de pagar envíe captura`
+📸 Envíe captura`
       );
     }
 
@@ -462,7 +454,7 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-        "📱 Seleccione tipo:",
+        "📱 Seleccione tipo",
 {
   reply_markup: {
     keyboard: [
@@ -494,7 +486,7 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-        "📦 Seleccione plan:",
+        "📦 Seleccione plan",
 {
   reply_markup: {
     keyboard: [
@@ -530,7 +522,7 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-        "🌍 Seleccione promoción:",
+        "🌍 Seleccione promoción",
 {
   reply_markup: {
     keyboard: [
@@ -556,11 +548,14 @@ NO poner nada relacionado al pago.
     // ===============================
 
     if (
-      text === "120 CUP" ||
-      text === "240 CUP" ||
-      text === "360 CUP" ||
-      text === "Promo 1" ||
-      text === "Promo 2"
+      user.step === "plan" &&
+      (
+        text === "120 CUP" ||
+        text === "240 CUP" ||
+        text === "360 CUP" ||
+        text === "Promo 1" ||
+        text === "Promo 2"
+      )
     ) {
 
       user.plan = text;
@@ -568,7 +563,7 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-        "💳 Seleccione método de pago:",
+        "💳 Método de pago",
 {
   reply_markup: {
     keyboard: [
@@ -603,64 +598,16 @@ NO poner nada relacionado al pago.
 
       user.payment = text;
 
-      let total = 0;
+      user.total = 1000;
 
-      if (user.plan === "120 CUP") {
-        total =
-          text === "🏦 Transferencia"
-            ? 700
-            : 500;
-      }
-
-      if (user.plan === "240 CUP") {
-        total =
-          text === "🏦 Transferencia"
-            ? 1500
-            : 1000;
-      }
-
-      if (user.plan === "360 CUP") {
-        total =
-          text === "🏦 Transferencia"
-            ? 2000
-            : 1500;
-      }
-
-      if (user.plan === "Promo 1") {
-        total = 20;
-      }
-
-      if (user.plan === "Promo 2") {
-        total = 40;
-      }
-
-      user.total = total;
       user.step = "phone_recharge";
-
-      if (text === "💵 Efectivo") {
-
-        return bot.sendMessage(
-          chatId,
-`💵 PAGO EN EFECTIVO
-
-📦 Plan: ${user.plan}
-💰 Total: ${total}
-
-📱 Ahora envíe el número`
-        );
-      }
 
       return bot.sendMessage(
         chatId,
-`🏦 TRANSFERENCIA
+`📱 Envíe número cubano
 
-📦 Plan: ${user.plan}
-💰 Total: ${total}
-
-💳 Tarjeta:
-1234 5678 9012 3456
-
-📱 Ahora envíe el número`
+Ejemplo:
+55112233`
       );
     }
 
@@ -684,10 +631,9 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-`📦 Plan: ${user.plan}
-📱 Número: ${user.rechargePhone}
+`📱 ${user.rechargePhone}
 
-📸 Envíe captura/foto`
+📸 Envíe captura`
       );
     }
 
@@ -703,7 +649,7 @@ NO poner nada relacionado al pago.
 
       return bot.sendMessage(
         chatId,
-        "📱 Envíe teléfono del familiar"
+        "📱 Envíe teléfono"
       );
     }
 
@@ -743,13 +689,15 @@ NO poner nada relacionado al pago.
         type: "Remesa",
         amount: user.amount,
         total: user.total,
-        phone: user.phone,
-        name: user.name,
       });
 
-      await bot.sendPhoto(
-        ADMIN_ID,
-        user.remesaPhoto,
+      try {
+
+        if (user.remesaPhoto) {
+
+          await bot.sendPhoto(
+            ADMIN_ID,
+            user.remesaPhoto,
 {
   caption:
 `🔥 NUEVA REMESA
@@ -758,52 +706,48 @@ NO poner nada relacionado al pago.
 📌 Comisión: ${user.commission}
 💰 Total: ${user.total}
 
-💳 Método:
-${user.remesaPayment}
+👤 ${user.name}
+📱 ${user.phone}
 
-👤 Nombre:
-${user.name}
+🏠 ${user.address}
 
-📱 Número:
-${user.phone}
-
-🏠 Dirección:
-${user.address}
-
-👤 Cliente:
-@${msg.from.username || "Sin username"}
-
-🆔 ID:
-${chatId}`
+💳 ${user.remesaPayment}`
 }
-      );
+          );
+
+        } else {
+
+          await bot.sendMessage(
+            ADMIN_ID,
+`🔥 NUEVA REMESA
+
+💵 ${user.amount}
+💰 ${user.total}`
+          );
+
+        }
+
+      } catch (adminError) {
+
+        console.log(
+          "ERROR ADMIN:",
+          adminError.message
+        );
+
+      }
 
       await bot.sendMessage(
         chatId,
-`✅ REMESA ENVIADA CORRECTAMENTE
+`✅ REMESA ENVIADA
 
 🧾 RECIBO
 
-━━━━━━━━━━━━━━
-💵 Tipo: Remesa
-💰 Monto: $${user.amount}
-📌 Comisión: $${user.commission}
-💳 Total Pagado: $${user.total}
+💵 ${user.amount}
+📌 Comisión: ${user.commission}
+💰 Total: ${user.total}
 
-💳 Método:
-${user.remesaPayment}
-
-👤 Beneficiario:
-${user.name}
-
-📱 Teléfono:
-${user.phone}
-
-🏠 Dirección:
-${user.address}
-━━━━━━━━━━━━━━
-
-🔥 Gracias por utilizar JCS`
+👤 ${user.name}
+📱 ${user.phone}`
       );
 
       delete users[chatId];
@@ -813,7 +757,10 @@ ${user.address}
 
   } catch (err) {
 
-    console.log(err);
+    console.log(
+      "ERROR:",
+      err.message
+    );
 
   }
 
@@ -839,7 +786,7 @@ bot.on("photo", async (msg) => {
     if (!photo) return;
 
     // ===============================
-    // CAPTURA REMESA
+    // REMESA FOTO
     // ===============================
 
     if (user.step === "remesa_screenshot") {
@@ -852,74 +799,56 @@ bot.on("photo", async (msg) => {
         chatId,
 `✅ Captura recibida
 
-👤 Ahora envíe el nombre del familiar`
+👤 Envíe nombre del familiar`
       );
     }
 
     // ===============================
-    // RECARGA
+    // RECARGA FOTO
     // ===============================
 
     if (user.step === "screenshot") {
 
       orders.push({
         type: "Recarga",
-        plan: user.plan,
-        phone: user.rechargePhone,
         total: user.total,
       });
 
-      await bot.sendPhoto(
-        ADMIN_ID,
-        photo,
+      try {
+
+        await bot.sendPhoto(
+          ADMIN_ID,
+          photo,
 {
   caption:
 `🔥 NUEVA RECARGA
 
-📦 Plan:
-${user.plan}
+📱 ${user.rechargePhone}
 
-📱 Número:
-${user.rechargePhone}
+📦 ${user.plan}
 
-💳 Pago:
-${user.payment}
+💳 ${user.payment}
 
-💰 Total:
-${user.total}
-
-👤 Cliente:
-@${msg.from.username || "Sin username"}
-
-🆔 ID:
-${chatId}`
+💰 ${user.total}`
 }
-      );
+        );
+
+      } catch (adminError) {
+
+        console.log(
+          "ERROR ADMIN:",
+          adminError.message
+        );
+
+      }
 
       await bot.sendMessage(
         chatId,
-`✅ RECARGA ENVIADA CORRECTAMENTE
+`✅ RECARGA ENVIADA
 
-🧾 RECIBO
-
-━━━━━━━━━━━━━━
-📦 Tipo:
-${user.type}
-
-📱 Número:
-${user.rechargePhone}
-
-📦 Plan:
-${user.plan}
-
-💳 Método:
-${user.payment}
-
-💰 Total:
-${user.total}
-━━━━━━━━━━━━━━
-
-🔥 Gracias por utilizar JCS`
+📱 ${user.rechargePhone}
+📦 ${user.plan}
+💰 ${user.total}`
       );
 
       delete users[chatId];
@@ -927,19 +856,25 @@ ${user.total}
 
   } catch (err) {
 
-    console.log(err);
+    console.log(
+      "ERROR FOTO:",
+      err.message
+    );
 
   }
 
 });
 
 // ===============================
-// ERROR
+// ERROR POLLING
 // ===============================
 
 bot.on("polling_error", (err) => {
 
-  console.log(err.message);
+  console.log(
+    "POLLING ERROR:",
+    err.message
+  );
 
 });
 
