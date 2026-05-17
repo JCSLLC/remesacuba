@@ -6,11 +6,8 @@ const TelegramBot = require("node-telegram-bot-api");
 // CONFIG
 // ===============================
 
-const BOT_TOKEN =
-  process.env.BOT_TOKEN ||
-  "8908816666:AAHlljrxy7VG15_zOl7UoVNVb0BziY0bmtg";
-
-const ADMIN_ID = "6794562791";
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_ID = process.env.ADMIN_ID;
 
 const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
@@ -21,6 +18,7 @@ const bot = new TelegramBot(BOT_TOKEN, {
 // ===============================
 
 const users = {};
+const orders = [];
 
 // ===============================
 // FUNCIONES
@@ -28,13 +26,9 @@ const users = {};
 
 function calculateCommission(amount) {
 
-  // 1 a 49 = comisión fija 5
-
   if (amount >= 1 && amount <= 49) {
     return 5;
   }
-
-  // 50+ = 10%
 
   return amount * 0.1;
 }
@@ -52,15 +46,14 @@ async function mainMenu(chatId) {
   return bot.sendMessage(
     chatId,
 `
-            
-      Remesas y Recarga
-
+💸 *Remesas y Recargas*
 
 _Este es un bot de Remesas y Recargas para Cuba._
 
 🔥 Servicio rápido y seguro
 📱 Recargas nacionales e internacionales
-💸 Remesas automáticas`,
+💸 Remesas automáticas
+`,
 {
   parse_mode: "Markdown",
   reply_markup: {
@@ -123,7 +116,7 @@ bot.on("message", async (msg) => {
     if (text === "/start") return;
 
     // ===============================
-    // MENU
+    // VOLVER
     // ===============================
 
     if (text === "⬅️ Volver") {
@@ -163,7 +156,94 @@ bot.on("message", async (msg) => {
         chatId,
 `👮 PANEL ADMIN
 
-✅ Bot funcionando correctamente`
+📦 Pedidos guardados: ${orders.length}
+👥 Usuarios activos: ${Object.keys(users).length}
+
+Seleccione una opción`,
+{
+  reply_markup: {
+    keyboard: [
+
+      [
+        "📦 Pedidos"
+      ],
+
+      [
+        "📊 Estadísticas"
+      ],
+
+      [
+        "⬅️ Volver"
+      ],
+
+    ],
+    resize_keyboard: true,
+  },
+}
+      );
+    }
+
+    // ===============================
+    // PEDIDOS ADMIN
+    // ===============================
+
+    if (
+      text === "📦 Pedidos" &&
+      String(chatId) === String(ADMIN_ID)
+    ) {
+
+      if (orders.length === 0) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ No hay pedidos"
+        );
+      }
+
+      let message = "📦 PEDIDOS\n\n";
+
+      orders.forEach((o, i) => {
+
+        message +=
+`${i + 1}. ${o.type}
+
+💰 ${o.total}
+
+`;
+      });
+
+      return bot.sendMessage(
+        chatId,
+        message
+      );
+    }
+
+    // ===============================
+    // ESTADISTICAS
+    // ===============================
+
+    if (
+      text === "📊 Estadísticas" &&
+      String(chatId) === String(ADMIN_ID)
+    ) {
+
+      const totalOrders = orders.length;
+
+      let totalMoney = 0;
+
+      orders.forEach(o => {
+        totalMoney += Number(o.total || 0);
+      });
+
+      return bot.sendMessage(
+        chatId,
+`📊 ESTADÍSTICAS
+
+📦 Pedidos:
+${totalOrders}
+
+💰 Total generado:
+${totalMoney}`
       );
     }
 
@@ -204,7 +284,7 @@ bot.on("message", async (msg) => {
     }
 
     // ===============================
-    // SELECCION MONTO REMESA
+    // MONTO REMESA
     // ===============================
 
     if (user.step === "amount_select") {
@@ -267,7 +347,7 @@ Ejemplo:
     }
 
     // ===============================
-    // MONTO PERSONALIZADO REMESA
+    // MONTO PERSONALIZADO
     // ===============================
 
     if (user.step === "amount") {
@@ -341,7 +421,7 @@ https://www.paypal.com/paypalme/josecastineira00
 ⚠️ IMPORTANTE
 NO poner nada relacionado al pago.
 
-📸 Después de pagar envíe captura de pantalla`
+📸 Después de pagar envíe captura`
       );
     }
 
@@ -370,7 +450,7 @@ JCS LLC
 ⚠️ IMPORTANTE
 NO poner nada relacionado al pago.
 
-📸 Después de pagar envíe captura de pantalla`
+📸 Después de pagar envíe captura`
       );
     }
 
@@ -383,23 +463,23 @@ NO poner nada relacionado al pago.
       return bot.sendMessage(
         chatId,
         "📱 Seleccione tipo:",
-        {
-          reply_markup: {
-            keyboard: [
+{
+  reply_markup: {
+    keyboard: [
 
-              [
-                "🇨🇺 Nacional",
-                "🌍 Internacional"
-              ],
+      [
+        "🇨🇺 Nacional",
+        "🌍 Internacional"
+      ],
 
-              [
-                "⬅️ Volver"
-              ],
+      [
+        "⬅️ Volver"
+      ],
 
-            ],
-            resize_keyboard: true,
-          },
-        }
+    ],
+    resize_keyboard: true,
+  },
+}
       );
     }
 
@@ -415,27 +495,27 @@ NO poner nada relacionado al pago.
       return bot.sendMessage(
         chatId,
         "📦 Seleccione plan:",
-        {
-          reply_markup: {
-            keyboard: [
+{
+  reply_markup: {
+    keyboard: [
 
-              [
-                "120 CUP",
-                "240 CUP"
-              ],
+      [
+        "120 CUP",
+        "240 CUP"
+      ],
 
-              [
-                "360 CUP"
-              ],
+      [
+        "360 CUP"
+      ],
 
-              [
-                "⬅️ Volver"
-              ],
+      [
+        "⬅️ Volver"
+      ],
 
-            ],
-            resize_keyboard: true,
-          },
-        }
+    ],
+    resize_keyboard: true,
+  },
+}
       );
     }
 
@@ -451,23 +531,23 @@ NO poner nada relacionado al pago.
       return bot.sendMessage(
         chatId,
         "🌍 Seleccione promoción:",
-        {
-          reply_markup: {
-            keyboard: [
+{
+  reply_markup: {
+    keyboard: [
 
-              [
-                "Promo 1",
-                "Promo 2"
-              ],
+      [
+        "Promo 1",
+        "Promo 2"
+      ],
 
-              [
-                "⬅️ Volver"
-              ],
+      [
+        "⬅️ Volver"
+      ],
 
-            ],
-            resize_keyboard: true,
-          },
-        }
+    ],
+    resize_keyboard: true,
+  },
+}
       );
     }
 
@@ -489,23 +569,23 @@ NO poner nada relacionado al pago.
       return bot.sendMessage(
         chatId,
         "💳 Seleccione método de pago:",
-        {
-          reply_markup: {
-            keyboard: [
+{
+  reply_markup: {
+    keyboard: [
 
-              [
-                "💵 Efectivo",
-                "🏦 Transferencia"
-              ],
+      [
+        "💵 Efectivo",
+        "🏦 Transferencia"
+      ],
 
-              [
-                "⬅️ Volver"
-              ],
+      [
+        "⬅️ Volver"
+      ],
 
-            ],
-            resize_keyboard: true,
-          },
-        }
+    ],
+    resize_keyboard: true,
+  },
+}
       );
     }
 
@@ -514,8 +594,11 @@ NO poner nada relacionado al pago.
     // ===============================
 
     if (
-      text === "💵 Efectivo" ||
-      text === "🏦 Transferencia"
+      user.step === "payment" &&
+      (
+        text === "💵 Efectivo" ||
+        text === "🏦 Transferencia"
+      )
     ) {
 
       user.payment = text;
@@ -656,8 +739,19 @@ NO poner nada relacionado al pago.
 
       user.address = text;
 
-      await bot.sendMessage(
+      orders.push({
+        type: "Remesa",
+        amount: user.amount,
+        total: user.total,
+        phone: user.phone,
+        name: user.name,
+      });
+
+      await bot.sendPhoto(
         ADMIN_ID,
+        user.remesaPhoto,
+{
+  caption:
 `🔥 NUEVA REMESA
 
 💵 Monto: ${user.amount}
@@ -674,7 +768,14 @@ ${user.name}
 ${user.phone}
 
 🏠 Dirección:
-${user.address}`
+${user.address}
+
+👤 Cliente:
+@${msg.from.username || "Sin username"}
+
+🆔 ID:
+${chatId}`
+}
       );
 
       await bot.sendMessage(
@@ -689,7 +790,7 @@ ${user.address}`
 📌 Comisión: $${user.commission}
 💳 Total Pagado: $${user.total}
 
-💳 Método de Pago:
+💳 Método:
 ${user.remesaPayment}
 
 👤 Beneficiario:
@@ -702,7 +803,7 @@ ${user.phone}
 ${user.address}
 ━━━━━━━━━━━━━━
 
-🔥 Gracias por utilizar JCS Remesas y Recargas`
+🔥 Gracias por utilizar JCS`
       );
 
       delete users[chatId];
@@ -761,14 +862,22 @@ bot.on("photo", async (msg) => {
 
     if (user.step === "screenshot") {
 
+      orders.push({
+        type: "Recarga",
+        plan: user.plan,
+        phone: user.rechargePhone,
+        total: user.total,
+      });
+
       await bot.sendPhoto(
         ADMIN_ID,
         photo,
-        {
-          caption:
+{
+  caption:
 `🔥 NUEVA RECARGA
 
-📦 Plan: ${user.plan}
+📦 Plan:
+${user.plan}
 
 📱 Número:
 ${user.rechargePhone}
@@ -777,8 +886,14 @@ ${user.rechargePhone}
 ${user.payment}
 
 💰 Total:
-${user.total}`
-        }
+${user.total}
+
+👤 Cliente:
+@${msg.from.username || "Sin username"}
+
+🆔 ID:
+${chatId}`
+}
       );
 
       await bot.sendMessage(
@@ -797,14 +912,14 @@ ${user.rechargePhone}
 📦 Plan:
 ${user.plan}
 
-💳 Método de Pago:
+💳 Método:
 ${user.payment}
 
 💰 Total:
 ${user.total}
 ━━━━━━━━━━━━━━
 
-🔥 Gracias por utilizar JCS Remesas y Recargas`
+🔥 Gracias por utilizar JCS`
       );
 
       delete users[chatId];
