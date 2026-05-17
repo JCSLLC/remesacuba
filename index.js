@@ -177,7 +177,7 @@ bot.on("callback_query", async (query) => {
 
       return bot.sendMessage(
         chatId,
-        "💵 Seleccione o escriba un monto:",
+        "💵 Seleccione o Escriba un monto:",
         {
           reply_markup: {
             inline_keyboard: [
@@ -222,7 +222,7 @@ bot.on("callback_query", async (query) => {
         chatId,
         `💵 Monto: $${amount}
 📌 Comisión: $${commission}
-✅ Total: $${user.total}
+✅ Total a Pagar: $${user.total}
 
 💳 Seleccione método de pago:`,
         {
@@ -487,7 +487,7 @@ NO poner nada relacionado al pago.
 
 💰 Total: ${precio}
 
-📱 Ahora envíe el número a recargar`
+📱 Envíe el número a recargar`
         );
       }
 
@@ -504,7 +504,7 @@ NO poner nada relacionado al pago.
 🏦 Tarjeta:
 ${process.env.CARD_NUMBER || "NO CONFIG"}
 
-📱 Ahora envíe el número a recargar`
+📱 Envíe el número a recargar`
       );
     }
 
@@ -564,7 +564,7 @@ bot.on("message", async (msg) => {
         chatId,
         `💵 Monto: $${amount}
 📌 Comisión: $${commission}
-✅ Total: $${user.total}
+✅ Total a Pagar: $${user.total}
 
 💳 Seleccione método de pago:`,
         {
@@ -736,7 +736,7 @@ bot.on("photo", async (msg) => {
         chatId,
         `✅ Captura recibida
 
-👤 Ahora envíe el nombre del familiar`
+👤 Envíe el nombre del familiar`
       );
     }
 
