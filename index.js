@@ -423,8 +423,8 @@ $${user.total}
     keyboard: [
 
       [
-        '${PAYPAL_EMOJI} PayPal',
-        '${ZELLE_EMOJI} Zelle'
+        " 🅿️ PayPal",
+        " 💰 Zelle"
       ],
 
       [
@@ -509,8 +509,8 @@ $${user.total}
     keyboard: [
 
       [
-        '${PAYPAL_EMOJI} PayPal',
-        '${ZELLE_EMOJI} Zelle'
+        "🅿️ PayPal",
+       " 💰 Zelle "
       ],
 
       [
@@ -721,7 +721,7 @@ ${ZELLE_EMOJI} *ZELLE*
     keyboard: [
 
       [
-        "${ZELLE_EMOJI} Zelle",
+        "💰 Zelle",
         "🏦 Transferencia"
       ],
 
@@ -844,7 +844,7 @@ Ejemplo:
 `
 📱 ${user.rechargePhone}
 
-📸 Envíe captura
+📸 Envíe una Captura Del Pago
 `
       );
     }
@@ -861,7 +861,7 @@ Ejemplo:
 
       return bot.sendMessage(
         chatId,
-        "📱 Envíe teléfono"
+        "📱 Escriba el Teléfono"
       );
     }
 
@@ -885,7 +885,7 @@ Ejemplo:
 
       return bot.sendMessage(
         chatId,
-        "🏠 Envíe dirección"
+        "🏠 Envíe la dirección"
       );
     }
 
@@ -1042,7 +1042,7 @@ bot.on("photo", async (msg) => {
       return bot.sendMessage(
         chatId,
 `
-✅ Captura recibida
+✅ Captura Recibida
 
 👤 Envíe nombre del familiar
 `
@@ -1122,7 +1122,7 @@ bot.on("photo", async (msg) => {
       await bot.sendMessage(
         chatId,
 `
-✅ RECARGA RECIBIDA
+✅ PEDIDO RECIBIDA
 
 🧾 Pedido:
 #${orderId}
