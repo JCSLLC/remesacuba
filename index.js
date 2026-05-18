@@ -1,7 +1,6 @@
 require("dotenv").config();
 
 const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios");
 
 // ===============================
 // CONFIG
@@ -9,15 +8,10 @@ const axios = require("axios");
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
-const QVAPAY_TOKEN = process.env.QVAPAY_TOKEN;
 
-if (
-  !BOT_TOKEN ||
-  !ADMIN_ID ||
-  !QVAPAY_TOKEN
-) {
+if (!BOT_TOKEN || !ADMIN_ID) {
   throw new Error(
-    "❌ Faltan BOT_TOKEN, ADMIN_ID o QVAPAY_TOKEN en .env"
+    "❌ Faltan BOT_TOKEN o ADMIN_ID en .env"
   );
 }
 
@@ -47,71 +41,6 @@ function calculateCommission(amount) {
 
 function isValidPhone(phone) {
   return /^[0-9]{8}$/.test(phone);
-}
-
-// ===============================
-// API QVAPAY
-// ===============================
-
-async function getInternationalPackages() {
-
-  try {
-
-    const response = await axios.get(
-      "https://api.qvapay.com/store/phone_package"
-    );
-
-    return response.data.phone_packages || [];
-
-  } catch (err) {
-
-    console.log(
-      "QvaPay Error:",
-      err.response?.data || err.message
-    );
-
-    return [];
-  }
-}
-
-// ===============================
-// COMPRAR PAQUETE INTERNACIONAL
-// ===============================
-
-async function buyInternationalPackage(
-  packageId,
-  phone
-) {
-
-  try {
-
-    const response = await axios.post(
-      "https://api.qvapay.com/store/phone_package",
-      {
-        phone_package_id: packageId,
-        phone_number: phone
-      },
-      {
-        headers: {
-          Authorization:
-            `Bearer ${QVAPAY_TOKEN}`,
-          "Content-Type":
-            "application/json"
-        }
-      }
-    );
-
-    return response.data;
-
-  } catch (err) {
-
-    console.log(
-      "BUY PACKAGE ERROR:",
-      err.response?.data || err.message
-    );
-
-    return null;
-  }
 }
 
 // ===============================
@@ -210,6 +139,197 @@ bot.on("message", async (msg) => {
       return bot.sendMessage(
         chatId,
         "🆘 Soporte:\n\nhttps://t.me/JCS_LLC"
+      );
+    }
+
+    // ===============================
+    // ADMIN
+    // ===============================
+
+    if (text === "👮 Admin") {
+
+      if (
+        String(chatId) !==
+        String(ADMIN_ID)
+      ) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ Acceso denegado"
+        );
+      }
+
+      return bot.sendMessage(
+        chatId,
+`
+👮 *PANEL ADMIN*
+
+📦 Pedidos:
+${orders.length}
+
+👥 Usuarios activos:
+${Object.keys(users).length}
+`,
+{
+  parse_mode: "Markdown",
+  reply_markup: {
+    keyboard: [
+
+      [
+        "📦 Pedidos",
+        "📊 Estadísticas"
+      ],
+
+      [
+        "⬅️ Volver"
+      ],
+
+    ],
+    resize_keyboard: true,
+  },
+}
+      );
+    }
+
+    // ===============================
+    // PEDIDOS ADMIN
+    // ===============================
+
+    if (
+      text === "📦 Pedidos" &&
+      String(chatId) === String(ADMIN_ID)
+    ) {
+
+      if (orders.length === 0) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ No hay pedidos"
+        );
+      }
+
+      for (const o of orders) {
+
+        let details = `
+━━━━━━━━━━━━━━━━━━
+📦 PEDIDO #${o.id}
+━━━━━━━━━━━━━━━━━━
+
+📌 Estado:
+${o.status}
+
+👤 Usuario:
+@${o.username}
+
+📦 Tipo:
+${o.type}
+`;
+
+        if (o.type === "Remesa") {
+
+          details += `
+
+💵 Monto:
+$${o.amount}
+
+📌 Comisión:
+$${o.commission}
+
+💰 Total:
+$${o.total}
+
+👤 Beneficiario:
+${o.name}
+
+📱 Teléfono:
+${o.phone}
+
+🏠 Dirección:
+${o.address}
+
+💳 Método:
+${o.payment}
+`;
+
+        } else {
+
+          details += `
+
+📱 Número:
+${o.phone}
+
+📦 Plan:
+${o.plan}
+
+💳 Pago:
+${o.payment}
+
+💰 Total:
+${o.total}
+`;
+        }
+
+        await bot.sendMessage(
+          chatId,
+          details,
+{
+  reply_markup: {
+    inline_keyboard: [
+
+      [
+        {
+          text: "✅ Confirmar",
+          callback_data:
+            `confirm_${o.id}`
+        },
+
+        {
+          text: "🗑 Eliminar",
+          callback_data:
+            `delete_${o.id}`
+        }
+      ]
+
+    ]
+  }
+}
+        );
+      }
+
+      return;
+    }
+
+    // ===============================
+    // ESTADISTICAS
+    // ===============================
+
+    if (
+      text === "📊 Estadísticas" &&
+      String(chatId) === String(ADMIN_ID)
+    ) {
+
+      let totalMoney = 0;
+
+      orders.forEach((o) => {
+        totalMoney += Number(
+          o.total || 0
+        );
+      });
+
+      return bot.sendMessage(
+        chatId,
+`
+📊 *ESTADÍSTICAS*
+
+📦 Pedidos:
+${orders.length}
+
+💰 Total generado:
+${totalMoney}
+`,
+{
+  parse_mode: "Markdown"
+}
       );
     }
 
@@ -540,44 +660,25 @@ $${user.total}
       user.type =
         "Recarga Internacional";
 
-      const packages =
-        await getInternationalPackages();
-
-      if (!packages.length) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ No se pudieron cargar las promociones"
-        );
-      }
-
-      user.internationalPackages =
-        packages;
-
       user.step = "plan";
-
-      const keyboard =
-        packages.map((p) => {
-
-          const finalPrice =
-            Number(p.price) + 3;
-
-          return [
-            `${p.name} - ${finalPrice} USD`
-          ];
-
-        });
-
-      keyboard.push(
-        ["⬅️ Volver"]
-      );
 
       return bot.sendMessage(
         chatId,
         "🌍 Seleccione promoción",
 {
   reply_markup: {
-    keyboard,
+    keyboard: [
+
+      [
+        "Promo 1",
+        "Promo 2"
+      ],
+
+      [
+        "⬅️ Volver"
+      ],
+
+    ],
     resize_keyboard: true,
   },
 }
@@ -594,57 +695,12 @@ $${user.total}
         text === "120 CUP" ||
         text === "240 CUP" ||
         text === "360 CUP" ||
-        user.internationalPackages?.some(
-          (p) => {
-
-            const finalPrice =
-              Number(p.price) + 3;
-
-            return (
-              text ===
-              `${p.name} - ${finalPrice} USD`
-            );
-
-          }
-        )
+        text === "Promo 1" ||
+        text === "Promo 2"
       )
     ) {
 
       user.plan = text;
-
-      // ===============================
-      // INTERNACIONAL
-      // ===============================
-
-      if (
-        user.type ===
-        "Recarga Internacional"
-      ) {
-
-        const selected =
-          user.internationalPackages.find(
-            (p) => {
-
-              const finalPrice =
-                Number(p.price) + 3;
-
-              return (
-                text ===
-                `${p.name} - ${finalPrice} USD`
-              );
-
-            }
-          );
-
-        if (selected) {
-
-          user.packageData =
-            selected;
-
-          user.total =
-            `${Number(selected.price) + 3} USD`;
-        }
-      }
 
       user.step = "payment";
 
@@ -656,7 +712,7 @@ $${user.total}
     keyboard: [
 
       [
-        "🏦 Zelle",
+        "🅿️ Zelle",
         "🏦 Transferencia"
       ],
 
@@ -678,16 +734,22 @@ $${user.total}
     if (
       user.step === "payment" &&
       (
-        text === "🏦 Zelle" ||
+        text === "🅿️ Zelle" ||
         text === "🏦 Transferencia"
       )
     ) {
 
       user.payment = text;
 
+      // ===============================
+      // PRECIOS RECARGA NACIONAL
+      // ===============================
+
       if (user.type === "Recarga Nacional") {
 
-        if (text === "🏦 Zelle") {
+        // ---- ZELLE USD ----
+
+        if (text === "🅿️ Zelle") {
 
           if (user.plan === "120 CUP") {
             user.total = "1 USD";
@@ -702,6 +764,8 @@ $${user.total}
           }
 
         }
+
+        // ---- TRANSFERENCIA CUP ----
 
         if (text === "🏦 Transferencia") {
 
@@ -719,10 +783,13 @@ $${user.total}
 
         }
 
+      } else {
+
+        user.total = "Pendiente";
       }
 
       user.step =
-        "payment_screenshot";
+        "phone_recharge";
 
       return bot.sendMessage(
         chatId,
@@ -733,7 +800,10 @@ ${user.payment}
 💰 Total:
 ${user.total}
 
-📸 Envíe captura de la transferencia
+📱 Envíe número cubano
+
+Ejemplo:
+55112233
 `
       );
     }
@@ -758,48 +828,73 @@ ${user.total}
       user.rechargePhone =
         `+53${text}`;
 
-      // ===============================
-      // ENVIAR RECARGA INTERNACIONAL
-      // ===============================
+      user.step = "screenshot";
 
-      let qvapayResponse = null;
-
-      if (
-        user.type ===
-        "Recarga Internacional"
-      ) {
-
-        qvapayResponse =
-          await buyInternationalPackage(
-            user.packageData.id,
-            user.rechargePhone
-          );
-
-        if (!qvapayResponse) {
-
-          return bot.sendMessage(
-            chatId,
+      return bot.sendMessage(
+        chatId,
 `
-❌ Error enviando la recarga internacional
+📱 ${user.rechargePhone}
 
-Intente nuevamente más tarde
+📸 Envíe captura
 `
-          );
-        }
+      );
+    }
+
+    // ===============================
+    // NOMBRE REMESA
+    // ===============================
+
+    if (user.step === "name") {
+
+      user.name = text;
+
+      user.step = "phone";
+
+      return bot.sendMessage(
+        chatId,
+        "📱 Envíe teléfono"
+      );
+    }
+
+    // ===============================
+    // TELEFONO REMESA
+    // ===============================
+
+    if (user.step === "phone") {
+
+      if (!isValidPhone(text)) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ Número inválido"
+        );
       }
 
-      const orderId =
-        Date.now();
+      user.phone = `+53${text}`;
+
+      user.step = "address";
+
+      return bot.sendMessage(
+        chatId,
+        "🏠 Envíe dirección"
+      );
+    }
+
+    // ===============================
+    // DIRECCION REMESA
+    // ===============================
+
+    if (user.step === "address") {
+
+      user.address = text;
+
+      const orderId = Date.now();
 
       orders.push({
 
         id: orderId,
 
-        status:
-          user.type ===
-          "Recarga Internacional"
-            ? "Procesada"
-            : "Pendiente",
+        status: "Pendiente",
 
         clientId: chatId,
 
@@ -807,21 +902,23 @@ Intente nuevamente más tarde
           msg.from.username ||
           "Sin username",
 
-        type: user.type,
+        type: "Remesa",
 
-        phone:
-          user.rechargePhone,
+        amount: user.amount,
 
-        plan: user.plan,
-
-        payment:
-          user.payment,
+        commission:
+          user.commission,
 
         total: user.total,
 
-        tx:
-          qvapayResponse?.transaction_uuid ||
-          null
+        payment:
+          user.remesaPayment,
+
+        name: user.name,
+
+        phone: user.phone,
+
+        address: user.address,
 
       });
 
@@ -829,29 +926,28 @@ Intente nuevamente más tarde
 
         await bot.sendPhoto(
           ADMIN_ID,
-          user.paymentPhoto,
+          user.remesaPhoto,
 {
   caption:
 `
-🔥 NUEVA RECARGA
+🔥 NUEVA REMESA
 
 🧾 Pedido:
 #${orderId}
 
-📱 ${user.rechargePhone}
+💵 Monto:
+$${user.amount}
 
-📦 ${user.plan}
+💰 Total:
+$${user.total}
 
-💳 ${user.payment}
+👤 ${user.name}
 
-💰 ${user.total}
+📱 ${user.phone}
 
-${
-  qvapayResponse
-    ? `🔗 TX:
-${qvapayResponse.transaction_uuid}`
-    : ""
-}
+🏠 ${user.address}
+
+💳 ${user.remesaPayment}
 `
 }
         );
@@ -868,32 +964,17 @@ ${qvapayResponse.transaction_uuid}`
       await bot.sendMessage(
         chatId,
 `
-✅ RECARGA RECIBIDA
+✅ REMESA RECIBIDA
 
 🧾 Pedido:
 #${orderId}
 
-📱 Número:
-${user.rechargePhone}
-
-📦 Plan:
-${user.plan}
-
 🕒 Estado:
-${
-  user.type ===
-  "Recarga Internacional"
-    ? "Procesada automáticamente"
-    : "Pendiente"
+Pendiente
+`,
+{
+  parse_mode: "Markdown"
 }
-
-${
-  qvapayResponse
-    ? `🔗 TX:
-${qvapayResponse.transaction_uuid}`
-    : ""
-}
-`
       );
 
       delete users[chatId];
@@ -960,31 +1041,92 @@ bot.on("photo", async (msg) => {
     }
 
     // ===============================
-    // CAPTURA RECARGA
+    // FOTO RECARGA
     // ===============================
 
     if (
-      user.step ===
-      "payment_screenshot"
+      user.step === "screenshot"
     ) {
 
-      user.paymentPhoto =
-        photo;
+      const orderId =
+        Date.now();
 
-      user.step =
-        "phone_recharge";
+      orders.push({
 
-      return bot.sendMessage(
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
+        type: "Recarga",
+
+        phone:
+          user.rechargePhone,
+
+        plan: user.plan,
+
+        payment:
+          user.payment,
+
+        total: user.total,
+
+      });
+
+      try {
+
+        await bot.sendPhoto(
+          ADMIN_ID,
+          photo,
+{
+  caption:
+`
+🔥 NUEVA RECARGA
+
+🧾 Pedido:
+#${orderId}
+
+📱 ${user.rechargePhone}
+
+📦 ${user.plan}
+
+💳 ${user.payment}
+
+💰 ${user.total}
+`
+}
+        );
+
+      } catch (err) {
+
+        console.log(
+          "ADMIN ERROR:",
+          err.message
+        );
+
+      }
+
+      await bot.sendMessage(
         chatId,
 `
-✅ Captura recibida
+✅ RECARGA RECIBIDA
 
-📱 Envíe número cubano
+🧾 Pedido:
+#${orderId}
 
-Ejemplo:
-55112233
-`
+🕒 Estado:
+Pendiente
+`,
+{
+  parse_mode: "Markdown"
+}
       );
+
+      delete users[chatId];
     }
 
   } catch (err) {
@@ -997,6 +1139,211 @@ Ejemplo:
   }
 
 });
+
+// ===============================
+// CALLBACKS
+// ===============================
+
+bot.on(
+  "callback_query",
+  async (query) => {
+
+    try {
+
+      const chatId =
+        query.message.chat.id;
+
+      if (
+        String(chatId) !==
+        String(ADMIN_ID)
+      ) {
+        return;
+      }
+
+      const data =
+        query.data;
+
+      // ===============================
+      // CONFIRMAR
+      // ===============================
+
+      if (
+        data.startsWith(
+          "confirm_"
+        )
+      ) {
+
+        const orderId =
+          Number(
+            data.split("_")[1]
+          );
+
+        const order =
+          orders.find(
+            (o) =>
+              o.id === orderId
+          );
+
+        if (!order) {
+
+          return bot.answerCallbackQuery(
+            query.id,
+            {
+              text:
+                "Pedido no encontrado",
+            }
+          );
+        }
+
+        order.status =
+          "Confirmado";
+
+        await bot.sendMessage(
+          order.clientId,
+`
+━━━━━━━━━━━━━━━━━━
+✅ *PEDIDO CONFIRMADO*
+━━━━━━━━━━━━━━━━━━
+
+🧾 *Pedido:*
+#${order.id}
+
+📦 *Tipo:*
+${order.type}
+
+🟢 *Estado:*
+Confirmado
+`,
+{
+  parse_mode: "Markdown"
+}
+        );
+
+        await bot.editMessageReplyMarkup(
+          {
+            inline_keyboard: [
+              [
+                {
+                  text:
+                    "✅ Confirmado",
+                  callback_data:
+                    "confirmed",
+                },
+              ],
+            ],
+          },
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+        );
+
+        await bot.answerCallbackQuery(
+          query.id,
+          {
+            text:
+              "Pedido confirmado",
+          }
+        );
+      }
+
+      // ===============================
+      // ELIMINAR PEDIDO
+      // ===============================
+
+      if (
+        data.startsWith(
+          "delete_"
+        )
+      ) {
+
+        const orderId =
+          Number(
+            data.split("_")[1]
+          );
+
+        const index =
+          orders.findIndex(
+            (o) =>
+              o.id === orderId
+          );
+
+        if (index === -1) {
+
+          return bot.answerCallbackQuery(
+            query.id,
+            {
+              text:
+                "Pedido no encontrado",
+            }
+          );
+        }
+
+        const deletedOrder =
+          orders[index];
+
+        orders.splice(index, 1);
+
+        if (query.message.photo) {
+
+          await bot.editMessageCaption(
+`
+❌ PEDIDO ELIMINADO
+
+🧾 Pedido:
+#${deletedOrder.id}
+
+📦 Tipo:
+${deletedOrder.type}
+`,
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+          );
+
+        } else {
+
+          await bot.editMessageText(
+`
+❌ PEDIDO ELIMINADO
+
+🧾 Pedido:
+#${deletedOrder.id}
+
+📦 Tipo:
+${deletedOrder.type}
+`,
+{
+  chat_id: chatId,
+  message_id:
+    query.message.message_id,
+}
+          );
+        }
+
+        await bot.answerCallbackQuery(
+          query.id,
+          {
+            text:
+              "Pedido eliminado",
+          }
+        );
+      }
+
+    } catch (err) {
+
+      console.log(
+        "CALLBACK ERROR:",
+        err.message
+      );
+
+    }
+
+  }
+);
 
 // ===============================
 // POLLING ERROR
