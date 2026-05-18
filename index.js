@@ -747,8 +747,6 @@ $${user.total}
 
       if (user.type === "Recarga Nacional") {
 
-        // ---- ZELLE USD ----
-
         if (text === "🅿️ Zelle") {
 
           if (user.plan === "120 CUP") {
@@ -764,8 +762,6 @@ $${user.total}
           }
 
         }
-
-        // ---- TRANSFERENCIA CUP ----
 
         if (text === "🏦 Transferencia") {
 
@@ -788,8 +784,11 @@ $${user.total}
         user.total = "Pendiente";
       }
 
-      user.step =
-        "phone_recharge";
+      // ===============================
+      // PEDIR CAPTURA
+      // ===============================
+
+      user.step = "payment_screenshot";
 
       return bot.sendMessage(
         chatId,
@@ -800,10 +799,7 @@ ${user.payment}
 💰 Total:
 ${user.total}
 
-📱 Envíe número cubano
-
-Ejemplo:
-55112233
+📸 Envíe captura de la transferencia
 `
       );
     }
@@ -828,16 +824,84 @@ Ejemplo:
       user.rechargePhone =
         `+53${text}`;
 
-      user.step = "screenshot";
+      const orderId =
+        Date.now();
 
-      return bot.sendMessage(
-        chatId,
+      orders.push({
+
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
+        type: "Recarga",
+
+        phone:
+          user.rechargePhone,
+
+        plan: user.plan,
+
+        payment:
+          user.payment,
+
+        total: user.total,
+
+      });
+
+      try {
+
+        await bot.sendPhoto(
+          ADMIN_ID,
+          user.paymentPhoto,
+{
+  caption:
 `
+🔥 NUEVA RECARGA
+
+🧾 Pedido:
+#${orderId}
+
 📱 ${user.rechargePhone}
 
-📸 Envíe captura
+📦 ${user.plan}
+
+💳 ${user.payment}
+
+💰 ${user.total}
+`
+}
+        );
+
+      } catch (err) {
+
+        console.log(
+          "ADMIN ERROR:",
+          err.message
+        );
+
+      }
+
+      await bot.sendMessage(
+        chatId,
+`
+✅ RECARGA RECIBIDA
+
+🧾 Pedido:
+#${orderId}
+
+🕒 Estado:
+Pendiente
 `
       );
+
+      delete users[chatId];
+
+      return;
     }
 
     // ===============================
@@ -971,10 +1035,7 @@ $${user.total}
 
 🕒 Estado:
 Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
+`
       );
 
       delete users[chatId];
@@ -1041,92 +1102,31 @@ bot.on("photo", async (msg) => {
     }
 
     // ===============================
-    // FOTO RECARGA
+    // CAPTURA PAGO RECARGA
     // ===============================
 
     if (
-      user.step === "screenshot"
+      user.step ===
+      "payment_screenshot"
     ) {
 
-      const orderId =
-        Date.now();
+      user.paymentPhoto =
+        photo;
 
-      orders.push({
+      user.step =
+        "phone_recharge";
 
-        id: orderId,
-
-        status: "Pendiente",
-
-        clientId: chatId,
-
-        username:
-          msg.from.username ||
-          "Sin username",
-
-        type: "Recarga",
-
-        phone:
-          user.rechargePhone,
-
-        plan: user.plan,
-
-        payment:
-          user.payment,
-
-        total: user.total,
-
-      });
-
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          photo,
-{
-  caption:
-`
-🔥 NUEVA RECARGA
-
-🧾 Pedido:
-#${orderId}
-
-📱 ${user.rechargePhone}
-
-📦 ${user.plan}
-
-💳 ${user.payment}
-
-💰 ${user.total}
-`
-}
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
-
-      await bot.sendMessage(
+      return bot.sendMessage(
         chatId,
 `
-✅ RECARGA RECIBIDA
+✅ Captura recibida
 
-🧾 Pedido:
-#${orderId}
+📱 Envíe número cubano
 
-🕒 Estado:
-Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
+Ejemplo:
+55112233
+`
       );
-
-      delete users[chatId];
     }
 
   } catch (err) {
@@ -1139,211 +1139,6 @@ Pendiente
   }
 
 });
-
-// ===============================
-// CALLBACKS
-// ===============================
-
-bot.on(
-  "callback_query",
-  async (query) => {
-
-    try {
-
-      const chatId =
-        query.message.chat.id;
-
-      if (
-        String(chatId) !==
-        String(ADMIN_ID)
-      ) {
-        return;
-      }
-
-      const data =
-        query.data;
-
-      // ===============================
-      // CONFIRMAR
-      // ===============================
-
-      if (
-        data.startsWith(
-          "confirm_"
-        )
-      ) {
-
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
-
-        const order =
-          orders.find(
-            (o) =>
-              o.id === orderId
-          );
-
-        if (!order) {
-
-          return bot.answerCallbackQuery(
-            query.id,
-            {
-              text:
-                "Pedido no encontrado",
-            }
-          );
-        }
-
-        order.status =
-          "Confirmado";
-
-        await bot.sendMessage(
-          order.clientId,
-`
-━━━━━━━━━━━━━━━━━━
-✅ *PEDIDO CONFIRMADO*
-━━━━━━━━━━━━━━━━━━
-
-🧾 *Pedido:*
-#${order.id}
-
-📦 *Tipo:*
-${order.type}
-
-🟢 *Estado:*
-Confirmado
-`,
-{
-  parse_mode: "Markdown"
-}
-        );
-
-        await bot.editMessageReplyMarkup(
-          {
-            inline_keyboard: [
-              [
-                {
-                  text:
-                    "✅ Confirmado",
-                  callback_data:
-                    "confirmed",
-                },
-              ],
-            ],
-          },
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-        );
-
-        await bot.answerCallbackQuery(
-          query.id,
-          {
-            text:
-              "Pedido confirmado",
-          }
-        );
-      }
-
-      // ===============================
-      // ELIMINAR PEDIDO
-      // ===============================
-
-      if (
-        data.startsWith(
-          "delete_"
-        )
-      ) {
-
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
-
-        const index =
-          orders.findIndex(
-            (o) =>
-              o.id === orderId
-          );
-
-        if (index === -1) {
-
-          return bot.answerCallbackQuery(
-            query.id,
-            {
-              text:
-                "Pedido no encontrado",
-            }
-          );
-        }
-
-        const deletedOrder =
-          orders[index];
-
-        orders.splice(index, 1);
-
-        if (query.message.photo) {
-
-          await bot.editMessageCaption(
-`
-❌ PEDIDO ELIMINADO
-
-🧾 Pedido:
-#${deletedOrder.id}
-
-📦 Tipo:
-${deletedOrder.type}
-`,
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-          );
-
-        } else {
-
-          await bot.editMessageText(
-`
-❌ PEDIDO ELIMINADO
-
-🧾 Pedido:
-#${deletedOrder.id}
-
-📦 Tipo:
-${deletedOrder.type}
-`,
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-          );
-        }
-
-        await bot.answerCallbackQuery(
-          query.id,
-          {
-            text:
-              "Pedido eliminado",
-          }
-        );
-      }
-
-    } catch (err) {
-
-      console.log(
-        "CALLBACK ERROR:",
-        err.message
-      );
-
-    }
-
-  }
-);
 
 // ===============================
 // POLLING ERROR
