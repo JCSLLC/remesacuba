@@ -712,7 +712,7 @@ $${user.total}
     keyboard: [
 
       [
-        "💵 Efectivo",
+        "🅿️ Zelle",
         "🏦 Transferencia"
       ],
 
@@ -734,15 +734,59 @@ $${user.total}
     if (
       user.step === "payment" &&
       (
-        text === "💵 Efectivo" ||
-        text ===
-          "🏦 Transferencia"
+        text === "🅿️ Zelle" ||
+        text === "🏦 Transferencia"
       )
     ) {
 
       user.payment = text;
 
-      user.total = 1000;
+      // ===============================
+      // PRECIOS RECARGA NACIONAL
+      // ===============================
+
+      if (user.type === "Recarga Nacional") {
+
+        // ---- ZELLE USD ----
+
+        if (text === "🅿️ Zelle") {
+
+          if (user.plan === "120 CUP") {
+            user.total = "1 USD";
+          }
+
+          if (user.plan === "240 CUP") {
+            user.total = "1.90 USD";
+          }
+
+          if (user.plan === "360 CUP") {
+            user.total = "2.70 USD";
+          }
+
+        }
+
+        // ---- TRANSFERENCIA CUP ----
+
+        if (text === "🏦 Transferencia") {
+
+          if (user.plan === "120 CUP") {
+            user.total = "700 CUP";
+          }
+
+          if (user.plan === "240 CUP") {
+            user.total = "1500 CUP";
+          }
+
+          if (user.plan === "360 CUP") {
+            user.total = "2000 CUP";
+          }
+
+        }
+
+      } else {
+
+        user.total = "Pendiente";
+      }
 
       user.step =
         "phone_recharge";
@@ -750,6 +794,12 @@ $${user.total}
       return bot.sendMessage(
         chatId,
 `
+💳 Método:
+${user.payment}
+
+💰 Total:
+${user.total}
+
 📱 Envíe número cubano
 
 Ejemplo:
