@@ -18,15 +18,6 @@ if (!BOT_TOKEN || !ADMIN_ID) {
 const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
 });
-// ===============================
-// EMOJIS PREMIUM
-// ===============================
-
-const ZELLE_EMOJI =
-'<emoji id="5145710307707978556">💰</emoji>';
-
-const PAYPAL_EMOJI =
-'<emoji id="5361837213144671465">💙</emoji>';
 
 // ===============================
 // MEMORIA
@@ -423,8 +414,8 @@ $${user.total}
     keyboard: [
 
       [
-        " 🅿️ PayPal",
-        " 💰 Zelle"
+        "🅿️ PayPal",
+        "🏦 Zelle"
       ],
 
       [
@@ -509,8 +500,8 @@ $${user.total}
     keyboard: [
 
       [
-        " 🅿️ PayPal ",
-       " 💰 Zelle "
+        "🅿️ PayPal",
+        "🏦 Zelle"
       ],
 
       [
@@ -531,7 +522,7 @@ $${user.total}
     if (
       user.step ===
         "remesa_payment" &&
-      text === '${PAYPAL_EMOJI} PayPal'
+      text === "🅿️ PayPal"
     ) {
 
       user.remesaPayment =
@@ -543,7 +534,7 @@ $${user.total}
       return bot.sendMessage(
         chatId,
 `
-${PAYPAL_EMOJI} *PAYPAL*
+🅿️ *PAYPAL*
 
 🔗 https://www.paypal.com/paypalme/josecastineira00
 
@@ -564,7 +555,7 @@ ${PAYPAL_EMOJI} *PAYPAL*
     if (
       user.step ===
         "remesa_payment" &&
-      text === '${ZELLE_EMOJI} Zelle'
+      text === "🏦 Zelle"
     ) {
 
       user.remesaPayment =
@@ -576,7 +567,7 @@ ${PAYPAL_EMOJI} *PAYPAL*
       return bot.sendMessage(
         chatId,
 `
-${ZELLE_EMOJI} *ZELLE*
+🏦 *ZELLE*
 
 👤 JCS LLC
 📱 +15026583021
@@ -721,7 +712,7 @@ ${ZELLE_EMOJI} *ZELLE*
     keyboard: [
 
       [
-        "💰 Zelle",
+        "🅿️ Zelle",
         "🏦 Transferencia"
       ],
 
@@ -743,7 +734,7 @@ ${ZELLE_EMOJI} *ZELLE*
     if (
       user.step === "payment" &&
       (
-        text === "${ZELLE_EMOJI} Zelle" ||
+        text === "🅿️ Zelle" ||
         text === "🏦 Transferencia"
       )
     ) {
@@ -758,7 +749,7 @@ ${ZELLE_EMOJI} *ZELLE*
 
         // ---- ZELLE USD ----
 
-        if (text === "${ZELLE_EMOJI} Zelle") {
+        if (text === "🅿️ Zelle") {
 
           if (user.plan === "120 CUP") {
             user.total = "1 USD";
@@ -844,7 +835,7 @@ Ejemplo:
 `
 📱 ${user.rechargePhone}
 
-📸 Envíe una Captura Del Pago
+📸 Envíe captura
 `
       );
     }
@@ -861,7 +852,7 @@ Ejemplo:
 
       return bot.sendMessage(
         chatId,
-        "📱 Escriba el Teléfono"
+        "📱 Envíe teléfono"
       );
     }
 
@@ -885,7 +876,7 @@ Ejemplo:
 
       return bot.sendMessage(
         chatId,
-        "🏠 Envíe la dirección"
+        "🏠 Envíe dirección"
       );
     }
 
@@ -1042,7 +1033,7 @@ bot.on("photo", async (msg) => {
       return bot.sendMessage(
         chatId,
 `
-✅ Captura Recibida
+✅ Captura recibida
 
 👤 Envíe nombre del familiar
 `
@@ -1122,7 +1113,7 @@ bot.on("photo", async (msg) => {
       await bot.sendMessage(
         chatId,
 `
-✅ PEDIDO RECIBIDA
+✅ RECARGA RECIBIDA
 
 🧾 Pedido:
 #${orderId}
