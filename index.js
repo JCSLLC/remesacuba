@@ -509,7 +509,7 @@ $${user.total}
     keyboard: [
 
       [
-        "🅿️ PayPal",
+        " 🅿️ PayPal ",
        " 💰 Zelle "
       ],
 
@@ -531,7 +531,7 @@ $${user.total}
     if (
       user.step ===
         "remesa_payment" &&
-      text === "${PAYPAL_EMOJI} PayPal"
+      text === '${PAYPAL_EMOJI} PayPal'
     ) {
 
       user.remesaPayment =
@@ -564,7 +564,7 @@ ${PAYPAL_EMOJI} *PAYPAL*
     if (
       user.step ===
         "remesa_payment" &&
-      text === "${ZELLE_EMOJI} Zelle"
+      text === '${ZELLE_EMOJI} Zelle'
     ) {
 
       user.remesaPayment =
