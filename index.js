@@ -1,3 +1,4 @@
+```js
 require("dotenv").config();
 
 const TelegramBot = require("node-telegram-bot-api");
@@ -38,11 +39,113 @@ function calculateCommission(amount) {
     return 5;
   }
 
-  return amount * 0.1;
+  return Number((amount * 0.1).toFixed(2));
 }
 
 function isValidPhone(phone) {
   return /^[0-9]{8}$/.test(phone);
+}
+
+function createPDF(order) {
+
+  return new Promise((resolve, reject) => {
+
+    const pdfPath = `pedido_${order.id}.pdf`;
+
+    const doc = new PDFDocument();
+
+    const stream = fs.createWriteStream(pdfPath);
+
+    doc.pipe(stream);
+
+    doc.fontSize(20).text(
+      "JCS Remesas y Recargas",
+      {
+        align: "center",
+      }
+    );
+
+    doc.moveDown();
+
+    doc.fontSize(14).text(
+      `Pedido #${order.id}`
+    );
+
+    doc.text(
+      `Estado: ${order.status}`
+    );
+
+    doc.text(
+      `Tipo: ${order.type}`
+    );
+
+    doc.moveDown();
+
+    if (order.type === "Remesa") {
+
+      doc.text(
+        `Monto: $${order.amount}`
+      );
+
+      doc.text(
+        `Comisión: $${order.commission}`
+      );
+
+      doc.text(
+        `Total: $${order.total}`
+      );
+
+      doc.text(
+        `Beneficiario: ${order.name}`
+      );
+
+      doc.text(
+        `Teléfono: ${order.phone}`
+      );
+
+      doc.text(
+        `Dirección: ${order.address}`
+      );
+
+      doc.text(
+        `Pago: ${order.payment}`
+      );
+
+    } else {
+
+      doc.text(
+        `Número: ${order.phone}`
+      );
+
+      doc.text(
+        `Plan: ${order.plan}`
+      );
+
+      doc.text(
+        `Pago: ${order.payment}`
+      );
+
+      doc.text(
+        `Total: ${order.total}`
+      );
+    }
+
+    doc.moveDown();
+
+    doc.text(
+      "Gracias por utilizar JCS Remesas y Recargas"
+    );
+
+    doc.end();
+
+    stream.on("finish", () => {
+      resolve(pdfPath);
+    });
+
+    stream.on("error", (err) => {
+      reject(err);
+    });
+  });
 }
 
 // ===============================
@@ -271,7 +374,7 @@ ${o.plan}
 ${o.payment}
 
 💰 Total:
-${o.total}
+$${o.total}
 `;
         }
 
@@ -331,7 +434,7 @@ ${o.total}
 ${orders.length}
 
 💰 Total generado:
-${totalMoney}
+$${totalMoney}
 `,
 {
   parse_mode: "Markdown"
@@ -355,11 +458,7 @@ ${totalMoney}
 `
 🗑 ESTADÍSTICAS BORRADAS
 
-📦 Pedidos:
-0
-
-💰 Total generado:
-0
+📦 Pedidos eliminados correctamente
 `
       );
     }
@@ -371,32 +470,11 @@ ${totalMoney}
     if (text === "💵 Remesa") {
 
       user.type = "Remesa";
-      user.step = "amount_select";
+      user.step = "amount";
 
       return bot.sendMessage(
         chatId,
-`💵 Seleccione un monto`,
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "50",
-        "100"
-      ],
-
-      [
-        "✍️ Personalizado"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
+        "💵 Envíe el monto de la remesa"
       );
     }
 
@@ -404,89 +482,9 @@ ${totalMoney}
     // MONTO REMESA
     // ===============================
 
-    if (user.step === "amount_select") {
-
-      if (
-        text === "50" ||
-        text === "100"
-      ) {
-
-        const amount =
-          parseFloat(text);
-
-        user.amount = amount;
-
-        const commission =
-          calculateCommission(amount);
-
-        user.commission = commission;
-        user.total =
-          amount + commission;
-
-        user.step =
-          "remesa_payment";
-
-        return bot.sendMessage(
-          chatId,
-`
-💵 Monto:
-$${amount}
-
-📌 Comisión:
-$${commission}
-
-💰 Total:
-$${user.total}
-
-💳 Método de pago
-`,
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🅿️ PayPal",
-        "🏦 Zelle"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-        );
-      }
-
-      if (
-        text === "✍️ Personalizado"
-      ) {
-
-        user.step = "amount";
-
-        return bot.sendMessage(
-          chatId,
-`
-✍️ Envíe monto personalizado
-
-Ejemplo:
-75
-150
-`
-        );
-      }
-    }
-
-    // ===============================
-    // MONTO PERSONALIZADO
-    // ===============================
-
     if (user.step === "amount") {
 
-      const amount =
-        parseFloat(text);
+      const amount = parseFloat(text);
 
       if (
         isNaN(amount) ||
@@ -501,115 +499,67 @@ Ejemplo:
 
       user.amount = amount;
 
-      const commission =
+      user.commission =
         calculateCommission(amount);
 
-      user.commission = commission;
-
       user.total =
-        amount + commission;
+        amount + user.commission;
 
-      user.step =
-        "remesa_payment";
+      user.step = "payment";
 
       return bot.sendMessage(
         chatId,
 `
 💵 Monto:
-$${amount}
+$${user.amount}
 
 📌 Comisión:
-$${commission}
+$${user.commission}
 
 💰 Total:
 $${user.total}
 
-💳 Método de pago
+💳 Seleccione método de pago
 `,
 {
   reply_markup: {
     keyboard: [
-
       [
         "🅿️ PayPal",
         "🏦 Zelle"
       ],
-
       [
         "⬅️ Volver"
-      ],
-
+      ]
     ],
     resize_keyboard: true,
-  },
+  }
 }
       );
     }
 
     // ===============================
-    // PAYPAL
+    // PAGO REMESA
     // ===============================
 
     if (
-      user.step ===
-        "remesa_payment" &&
-      text === "🅿️ PayPal"
+      user.step === "payment" &&
+      (
+        text === "🅿️ PayPal" ||
+        text === "🏦 Zelle"
+      )
     ) {
 
-      user.remesaPayment =
-        "PayPal";
+      user.payment =
+        text === "🅿️ PayPal"
+          ? "PayPal"
+          : "Zelle";
 
-      user.step =
-        "remesa_screenshot";
+      user.step = "photo";
 
       return bot.sendMessage(
         chatId,
-`
-🅿️ *PAYPAL*
-
-🔗 https://www.paypal.com/paypalme/josecastineira00
-
-⚠️ NO escribir nada en el pago
-
-📸 Envíe captura
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-    }
-
-    // ===============================
-    // ZELLE
-    // ===============================
-
-    if (
-      user.step ===
-        "remesa_payment" &&
-      text === "🏦 Zelle"
-    ) {
-
-      user.remesaPayment =
-        "Zelle";
-
-      user.step =
-        "remesa_screenshot";
-
-      return bot.sendMessage(
-        chatId,
-`
-🏦 *ZELLE*
-
-👤 JCS LLC
-📱 +15026583021
-
-⚠️ NO escribir nada en el pago
-
-📸 Envíe captura
-`,
-{
-  parse_mode: "Markdown"
-}
+        "📸 Envíe captura del pago"
       );
     }
 
@@ -619,173 +569,12 @@ $${user.total}
 
     if (text === "📱 Recarga") {
 
-      return bot.sendMessage(
-        chatId,
-        "📱 Seleccione tipo",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🇨🇺 Nacional",
-        "🌍 Internacional"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // RECARGA NACIONAL
-    // ===============================
-
-    if (text === "🇨🇺 Nacional") {
-
-      user.type =
-        "Recarga Nacional";
-
-      user.step = "plan";
+      user.type = "Recarga";
+      user.step = "recharge_phone";
 
       return bot.sendMessage(
         chatId,
-        "📦 Seleccione plan",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "120 CUP",
-        "240 CUP"
-      ],
-
-      [
-        "360 CUP"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // RECARGA INTERNACIONAL
-    // ===============================
-
-    if (
-      text === "🌍 Internacional"
-    ) {
-
-      user.type =
-        "Recarga Internacional";
-
-      user.step = "plan";
-
-      return bot.sendMessage(
-        chatId,
-        "🌍 Seleccione promoción",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "Promo 1",
-        "Promo 2"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // PLANES
-    // ===============================
-
-    if (
-      user.step === "plan" &&
-      (
-        text === "120 CUP" ||
-        text === "240 CUP" ||
-        text === "360 CUP" ||
-        text === "Promo 1" ||
-        text === "Promo 2"
-      )
-    ) {
-
-      user.plan = text;
-
-      user.step = "payment";
-
-      return bot.sendMessage(
-        chatId,
-        "💳 Método de pago",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "💵 Efectivo",
-        "🏦 Transferencia"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // PAGO RECARGA
-    // ===============================
-
-    if (
-      user.step === "payment" &&
-      (
-        text === "💵 Efectivo" ||
-        text ===
-          "🏦 Transferencia"
-      )
-    ) {
-
-      user.payment = text;
-
-      user.total = 1000;
-
-      user.step =
-        "phone_recharge";
-
-      return bot.sendMessage(
-        chatId,
-`
-📱 Envíe número cubano
-
-Ejemplo:
-55112233
-`
+        "📱 Envíe número cubano"
       );
     }
 
@@ -794,54 +583,8 @@ Ejemplo:
     // ===============================
 
     if (
-      user.step ===
-      "phone_recharge"
+      user.step === "recharge_phone"
     ) {
-
-      if (!isValidPhone(text)) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Número inválido"
-        );
-      }
-
-      user.rechargePhone =
-        `+53${text}`;
-
-      user.step = "screenshot";
-
-      return bot.sendMessage(
-        chatId,
-`
-📱 ${user.rechargePhone}
-
-📸 Envíe captura
-`
-      );
-    }
-
-    // ===============================
-    // NOMBRE REMESA
-    // ===============================
-
-    if (user.step === "name") {
-
-      user.name = text;
-
-      user.step = "phone";
-
-      return bot.sendMessage(
-        chatId,
-        "📱 Envíe teléfono"
-      );
-    }
-
-    // ===============================
-    // TELEFONO REMESA
-    // ===============================
-
-    if (user.step === "phone") {
 
       if (!isValidPhone(text)) {
 
@@ -852,101 +595,16 @@ Ejemplo:
       }
 
       user.phone = `+53${text}`;
+      user.total = 1000;
+      user.plan = "Recarga";
+      user.payment = "Transferencia";
 
-      user.step = "address";
+      user.step = "recharge_photo";
 
       return bot.sendMessage(
         chatId,
-        "🏠 Envíe dirección"
+        "📸 Envíe captura del pago"
       );
-    }
-
-    // ===============================
-    // DIRECCION REMESA
-    // ===============================
-
-    if (user.step === "address") {
-
-      user.address = text;
-
-      const orderId = Date.now();
-
-      orders.push({
-
-        id: orderId,
-
-        status: "Pendiente",
-
-        clientId: chatId,
-
-        username:
-          msg.from.username ||
-          "Sin username",
-
-        type: "Remesa",
-
-        amount: user.amount,
-
-        commission:
-          user.commission,
-
-        total: user.total,
-
-        payment:
-          user.remesaPayment,
-
-        name: user.name,
-
-        phone: user.phone,
-
-        address: user.address,
-
-      });
-
-      await bot.sendPhoto(
-        ADMIN_ID,
-        user.remesaPhoto,
-{
-  caption:
-`
-🔥 NUEVA REMESA
-
-🧾 Pedido:
-#${orderId}
-
-💵 Monto:
-$${user.amount}
-
-💰 Total:
-$${user.total}
-
-👤 ${user.name}
-
-📱 ${user.phone}
-
-🏠 ${user.address}
-
-💳 ${user.remesaPayment}
-`
-}
-      );
-
-      await bot.sendMessage(
-        chatId,
-`
-✅ REMESA RECIBIDA
-
-🧾 Pedido:
-#${orderId}
-
-🕒 Estado:
-Pendiente
-`
-      );
-
-      delete users[chatId];
-
-      return;
     }
 
   } catch (err) {
@@ -968,13 +626,11 @@ bot.on("photo", async (msg) => {
 
   try {
 
-    const chatId =
-      msg.chat.id;
+    const chatId = msg.chat.id;
 
     if (!users[chatId]) return;
 
-    const user =
-      users[chatId];
+    const user = users[chatId];
 
     const photo =
       msg.photo[
@@ -987,23 +643,15 @@ bot.on("photo", async (msg) => {
     // FOTO REMESA
     // ===============================
 
-    if (
-      user.step ===
-      "remesa_screenshot"
-    ) {
+    if (user.step === "photo") {
 
-      user.remesaPhoto =
-        photo;
+      user.photo = photo;
 
       user.step = "name";
 
       return bot.sendMessage(
         chatId,
-`
-✅ Captura recibida
-
-👤 Envíe nombre del familiar
-`
+        "👤 Envíe nombre del beneficiario"
       );
     }
 
@@ -1012,13 +660,12 @@ bot.on("photo", async (msg) => {
     // ===============================
 
     if (
-      user.step === "screenshot"
+      user.step === "recharge_photo"
     ) {
 
-      const orderId =
-        Date.now();
+      const orderId = Date.now();
 
-      orders.push({
+      const order = {
 
         id: orderId,
 
@@ -1032,17 +679,16 @@ bot.on("photo", async (msg) => {
 
         type: "Recarga",
 
-        phone:
-          user.rechargePhone,
+        phone: user.phone,
 
         plan: user.plan,
 
-        payment:
-          user.payment,
+        payment: user.payment,
 
         total: user.total,
+      };
 
-      });
+      orders.push(order);
 
       await bot.sendPhoto(
         ADMIN_ID,
@@ -1055,13 +701,9 @@ bot.on("photo", async (msg) => {
 🧾 Pedido:
 #${orderId}
 
-📱 ${user.rechargePhone}
+📱 ${user.phone}
 
-📦 ${user.plan}
-
-💳 ${user.payment}
-
-💰 ${user.total}
+💰 $${user.total}
 `
 }
       );
@@ -1094,6 +736,142 @@ Pendiente
 });
 
 // ===============================
+// NOMBRE REMESA
+// ===============================
+
+bot.on("message", async (msg) => {
+
+  try {
+
+    if (!msg.text) return;
+
+    const chatId = msg.chat.id;
+
+    const user = users[chatId];
+
+    if (!user) return;
+
+    if (user.step === "name") {
+
+      user.name = msg.text;
+
+      user.step = "phone";
+
+      return bot.sendMessage(
+        chatId,
+        "📱 Envíe teléfono del beneficiario"
+      );
+    }
+
+    if (user.step === "phone") {
+
+      if (!isValidPhone(msg.text)) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ Número inválido"
+        );
+      }
+
+      user.phone = `+53${msg.text}`;
+
+      user.step = "address";
+
+      return bot.sendMessage(
+        chatId,
+        "🏠 Envíe dirección"
+      );
+    }
+
+    if (user.step === "address") {
+
+      user.address = msg.text;
+
+      const orderId = Date.now();
+
+      const order = {
+
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
+        type: "Remesa",
+
+        amount: user.amount,
+
+        commission: user.commission,
+
+        total: user.total,
+
+        payment: user.payment,
+
+        name: user.name,
+
+        phone: user.phone,
+
+        address: user.address,
+      };
+
+      orders.push(order);
+
+      await bot.sendPhoto(
+        ADMIN_ID,
+        user.photo,
+{
+  caption:
+`
+🔥 NUEVA REMESA
+
+🧾 Pedido:
+#${orderId}
+
+💵 Monto:
+$${user.amount}
+
+💰 Total:
+$${user.total}
+
+👤 ${user.name}
+
+📱 ${user.phone}
+`
+}
+      );
+
+      await bot.sendMessage(
+        chatId,
+`
+✅ REMESA RECIBIDA
+
+🧾 Pedido:
+#${orderId}
+
+🕒 Estado:
+Pendiente
+`
+      );
+
+      delete users[chatId];
+    }
+
+  } catch (err) {
+
+    console.log(
+      "ERROR REMESA:",
+      err.message
+    );
+
+  }
+
+});
+
+// ===============================
 // CALLBACKS
 // ===============================
 
@@ -1113,8 +891,7 @@ bot.on(
         return;
       }
 
-      const data =
-        query.data;
+      const data = query.data;
 
       // ===============================
       // CONFIRMAR
@@ -1126,16 +903,14 @@ bot.on(
         )
       ) {
 
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
+        const orderId = Number(
+          data.split("_")[1]
+        );
 
-        const order =
-          orders.find(
-            (o) =>
-              o.id === orderId
-          );
+        const order = orders.find(
+          (o) =>
+            o.id === orderId
+        );
 
         if (!order) {
 
@@ -1151,103 +926,14 @@ bot.on(
         order.status =
           "Confirmado";
 
-        // ===============================
-        // GENERAR PDF
-        // ===============================
-
+        // PDF
         const pdfPath =
-          `pedido_${order.id}.pdf`;
+          await createPDF(order);
 
-        const doc =
-          new PDFDocument();
-
-        doc.pipe(
-          fs.createWriteStream(
-            pdfPath
-          )
-        );
-
-        doc.fontSize(20).text(
-          "JCS Remesas y Recargas",
-{
-  align: "center",
-}
-        );
-
-        doc.moveDown();
-
-        doc.fontSize(14).text(
-          `Pedido #${order.id}`
-        );
-
-        doc.text(
-          `Estado: ${order.status}`
-        );
-
-        doc.text(
-          `Tipo: ${order.type}`
-        );
-
-        if (
-          order.type === "Remesa"
-        ) {
-
-          doc.text(
-            `Monto: $${order.amount}`
-          );
-
-          doc.text(
-            `Comisión: $${order.commission}`
-          );
-
-          doc.text(
-            `Total: $${order.total}`
-          );
-
-          doc.text(
-            `Beneficiario: ${order.name}`
-          );
-
-          doc.text(
-            `Teléfono: ${order.phone}`
-          );
-
-          doc.text(
-            `Dirección: ${order.address}`
-          );
-
-        } else {
-
-          doc.text(
-            `Número: ${order.phone}`
-          );
-
-          doc.text(
-            `Plan: ${order.plan}`
-          );
-
-          doc.text(
-            `Pago: ${order.payment}`
-          );
-
-          doc.text(
-            `Total: ${order.total}`
-          );
-        }
-
-        doc.moveDown();
-
-        doc.text(
-          "Gracias por utilizar JCS Remesas y Recargas"
-        );
-
-        doc.end();
-
-        setTimeout(async () => {
-
-          await bot.sendDocument(
-            order.clientId,
-            pdfPath,
+        // Enviar PDF
+        await bot.sendDocument(
+          order.clientId,
+          pdfPath,
 {
   caption:
 `
@@ -1261,19 +947,17 @@ ${order.type}
 
 🟢 Estado:
 Confirmado
-
-📄 Se adjunta comprobante PDF
-`,
+`
 }
-          );
+        );
 
-          fs.unlink(
-            pdfPath,
-            () => {}
-          );
+        // Eliminar PDF
+        fs.unlink(
+          pdfPath,
+          () => {}
+        );
 
-        }, 2000);
-
+        // Editar botones admin
         await bot.editMessageReplyMarkup(
           {
             inline_keyboard: [
@@ -1313,10 +997,9 @@ Confirmado
         )
       ) {
 
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
+        const orderId = Number(
+          data.split("_")[1]
+        );
 
         const index =
           orders.findIndex(
@@ -1397,3 +1080,4 @@ bot.on(
 console.log(
   "✅ BOT INICIADO"
 );
+```
