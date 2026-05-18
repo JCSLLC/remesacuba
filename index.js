@@ -29,18 +29,12 @@ const users = {};
 const orders = [];
 
 // ===============================
-// CACHE PROMOS CUBATEL
+// PROMOS CUBATEL
 // ===============================
 
 let cubatelPromos = [
   "Recarga Internacional"
 ];
-
-let lastPromoUpdate = 0;
-
-// ===============================
-// ACTUALIZAR PROMOS
-// ===============================
 
 async function updateCubatelPromos() {
 
@@ -101,15 +95,11 @@ async function updateCubatelPromos() {
     if (promos.length > 0) {
 
       cubatelPromos =
-        promos.slice(0, 6);
-
-      lastPromoUpdate =
-        Date.now();
+        promos.slice(0, 5);
 
       console.log(
         "✅ Promos actualizadas"
       );
-
     }
 
   } catch (err) {
@@ -123,12 +113,10 @@ async function updateCubatelPromos() {
 
 }
 
-// ===============================
-// AUTO UPDATE CADA 6 HORAS
-// ===============================
-
+// actualizar promos al iniciar
 updateCubatelPromos();
 
+// actualizar cada 6 horas
 setInterval(
   updateCubatelPromos,
   1000 * 60 * 60 * 6
@@ -277,9 +265,6 @@ ${orders.length}
 
 👥 Usuarios activos:
 ${Object.keys(users).length}
-
-🌍 Promos internacionales:
-${cubatelPromos.length}
 `,
 {
   parse_mode: "Markdown",
@@ -627,73 +612,6 @@ $${user.total}
     }
 
     // ===============================
-    // PAYPAL
-    // ===============================
-
-    if (
-      user.step ===
-        "remesa_payment" &&
-      text === "🅿️ PayPal"
-    ) {
-
-      user.remesaPayment =
-        "PayPal";
-
-      user.step =
-        "remesa_screenshot";
-
-      return bot.sendMessage(
-        chatId,
-`
-🅿️ *PAYPAL*
-
-🔗 https://www.paypal.com/paypalme/josecastineira00
-
-⚠️ NO escribir nada en el pago
-
-📸 Envíe captura
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-    }
-
-    // ===============================
-    // ZELLE
-    // ===============================
-
-    if (
-      user.step ===
-        "remesa_payment" &&
-      text === "🏦 Zelle"
-    ) {
-
-      user.remesaPayment =
-        "Zelle";
-
-      user.step =
-        "remesa_screenshot";
-
-      return bot.sendMessage(
-        chatId,
-`
-🏦 *ZELLE*
-
-👤 JCS LLC
-📱 +15026583021
-
-⚠️ NO escribir nada en el pago
-
-📸 Envíe captura
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-    }
-
-    // ===============================
     // RECARGA
     // ===============================
 
@@ -833,116 +751,6 @@ $${user.total}
       );
     }
 
-    // ===============================
-    // PAGO RECARGA
-    // ===============================
-
-    if (
-      user.step === "payment" &&
-      (
-        text === "🅿️ Zelle" ||
-        text === "🏦 Transferencia"
-      )
-    ) {
-
-      user.payment = text;
-
-      // ===============================
-      // PRECIOS RECARGA NACIONAL
-      // ===============================
-
-      if (user.type === "Recarga Nacional") {
-
-        if (text === "🅿️ Zelle") {
-
-          if (user.plan === "120 CUP") {
-            user.total = "1 USD";
-          }
-
-          if (user.plan === "240 CUP") {
-            user.total = "1.90 USD";
-          }
-
-          if (user.plan === "360 CUP") {
-            user.total = "2.70 USD";
-          }
-
-        }
-
-        if (text === "🏦 Transferencia") {
-
-          if (user.plan === "120 CUP") {
-            user.total = "700 CUP";
-          }
-
-          if (user.plan === "240 CUP") {
-            user.total = "1500 CUP";
-          }
-
-          if (user.plan === "360 CUP") {
-            user.total = "2000 CUP";
-          }
-
-        }
-
-      } else {
-
-        user.total =
-          "Según promoción";
-      }
-
-      user.step =
-        "phone_recharge";
-
-      return bot.sendMessage(
-        chatId,
-`
-💳 Método:
-${user.payment}
-
-💰 Total:
-${user.total}
-
-📱 Envíe número cubano
-
-Ejemplo:
-55112233
-`
-      );
-    }
-
-    // ===============================
-    // TELEFONO RECARGA
-    // ===============================
-
-    if (
-      user.step ===
-      "phone_recharge"
-    ) {
-
-      if (!isValidPhone(text)) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Número inválido"
-        );
-      }
-
-      user.rechargePhone =
-        `+53${text}`;
-
-      user.step = "screenshot";
-
-      return bot.sendMessage(
-        chatId,
-`
-📱 ${user.rechargePhone}
-
-📸 Envíe captura del Pago
-`
-      );
-    }
-
   } catch (err) {
 
     console.log(
@@ -955,223 +763,8 @@ Ejemplo:
 });
 
 // ===============================
-// FOTOS
+// POLLING ERROR
 // ===============================
-
-bot.on("photo", async (msg) => {
-
-  try {
-
-    const chatId =
-      msg.chat.id;
-
-    if (!users[chatId]) return;
-
-    const user =
-      users[chatId];
-
-    const photo =
-      msg.photo[
-        msg.photo.length - 1
-      ]?.file_id;
-
-    if (!photo) return;
-
-    // ===============================
-    // FOTO RECARGA
-    // ===============================
-
-    if (
-      user.step === "screenshot"
-    ) {
-
-      const orderId =
-        Date.now();
-
-      orders.push({
-
-        id: orderId,
-
-        status: "Pendiente",
-
-        clientId: chatId,
-
-        username:
-          msg.from.username ||
-          "Sin username",
-
-        type: user.type,
-
-        phone:
-          user.rechargePhone,
-
-        plan: user.plan,
-
-        payment:
-          user.payment,
-
-        total: user.total,
-
-      });
-
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          photo,
-{
-  caption:
-`
-🔥 NUEVA RECARGA
-
-🧾 Pedido:
-#${orderId}
-
-📱 ${user.rechargePhone}
-
-📦 ${user.plan}
-
-💳 ${user.payment}
-
-💰 ${user.total}
-`
-}
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
-
-      await bot.sendMessage(
-        chatId,
-`
-✅ RECARGA RECIBIDA
-
-🧾 Pedido:
-#${orderId}
-
-🕒 Estado:
-Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-
-      delete users[chatId];
-    }
-
-  } catch (err) {
-
-    console.log(
-      "ERROR FOTO:",
-      err.message
-    );
-
-  }
-
-});
-
-// ===============================
-// CALLBACKS
-// ===============================
-
-bot.on(
-  "callback_query",
-  async (query) => {
-
-    try {
-
-      const chatId =
-        query.message.chat.id;
-
-      if (
-        String(chatId) !==
-        String(ADMIN_ID)
-      ) {
-        return;
-      }
-
-      const data =
-        query.data;
-
-      if (
-        data.startsWith(
-          "confirm_"
-        )
-      ) {
-
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
-
-        const order =
-          orders.find(
-            (o) =>
-              o.id === orderId
-          );
-
-        if (!order) {
-
-          return bot.answerCallbackQuery(
-            query.id,
-            {
-              text:
-                "Pedido no encontrado",
-            }
-          );
-        }
-
-        order.status =
-          "Confirmado";
-
-        await bot.sendMessage(
-          order.clientId,
-`
-━━━━━━━━━━━━━━━━━━
-✅ *PEDIDO CONFIRMADO*
-━━━━━━━━━━━━━━━━━━
-
-🧾 *Pedido:*
-#${order.id}
-
-📦 *Tipo:*
-${order.type}
-
-🟢 *Estado:*
-Confirmado
-`,
-{
-  parse_mode: "Markdown"
-}
-        );
-
-        await bot.answerCallbackQuery(
-          query.id,
-          {
-            text:
-              "Pedido confirmado",
-          }
-        );
-      }
-
-    } catch (err) {
-
-      console.log(
-        "CALLBACK ERROR:",
-        err.message
-      );
-
-    }
-
-  }
-);
 
 bot.on(
   "polling_error",
