@@ -1,6 +1,8 @@
 require("dotenv").config();
 
 const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
 
 // ===============================
 // CONFIG
@@ -181,6 +183,10 @@ ${Object.keys(users).length}
       ],
 
       [
+        "🗑 Borrar Estadísticas"
+      ],
+
+      [
         "⬅️ Volver"
       ],
 
@@ -330,6 +336,31 @@ ${totalMoney}
 {
   parse_mode: "Markdown"
 }
+      );
+    }
+
+    // ===============================
+    // BORRAR ESTADISTICAS
+    // ===============================
+
+    if (
+      text === "🗑 Borrar Estadísticas" &&
+      String(chatId) === String(ADMIN_ID)
+    ) {
+
+      orders.length = 0;
+
+      return bot.sendMessage(
+        chatId,
+`
+🗑 ESTADÍSTICAS BORRADAS
+
+📦 Pedidos:
+0
+
+💰 Total generado:
+0
+`
       );
     }
 
@@ -872,11 +903,9 @@ Ejemplo:
 
       });
 
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          user.remesaPhoto,
+      await bot.sendPhoto(
+        ADMIN_ID,
+        user.remesaPhoto,
 {
   caption:
 `
@@ -900,16 +929,7 @@ $${user.total}
 💳 ${user.remesaPayment}
 `
 }
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
+      );
 
       await bot.sendMessage(
         chatId,
@@ -921,10 +941,7 @@ $${user.total}
 
 🕒 Estado:
 Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
+`
       );
 
       delete users[chatId];
@@ -1027,11 +1044,9 @@ bot.on("photo", async (msg) => {
 
       });
 
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          photo,
+      await bot.sendPhoto(
+        ADMIN_ID,
+        photo,
 {
   caption:
 `
@@ -1049,16 +1064,7 @@ bot.on("photo", async (msg) => {
 💰 ${user.total}
 `
 }
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
+      );
 
       await bot.sendMessage(
         chatId,
@@ -1070,10 +1076,7 @@ bot.on("photo", async (msg) => {
 
 🕒 Estado:
 Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
+`
       );
 
       delete users[chatId];
@@ -1148,26 +1151,128 @@ bot.on(
         order.status =
           "Confirmado";
 
-        await bot.sendMessage(
-          order.clientId,
-`
-━━━━━━━━━━━━━━━━━━
-✅ *PEDIDO CONFIRMADO*
-━━━━━━━━━━━━━━━━━━
+        // ===============================
+        // GENERAR PDF
+        // ===============================
 
-🧾 *Pedido:*
-#${order.id}
+        const pdfPath =
+          `pedido_${order.id}.pdf`;
 
-📦 *Tipo:*
-${order.type}
+        const doc =
+          new PDFDocument();
 
-🟢 *Estado:*
-Confirmado
-`,
+        doc.pipe(
+          fs.createWriteStream(
+            pdfPath
+          )
+        );
+
+        doc.fontSize(20).text(
+          "JCS Remesas y Recargas",
 {
-  parse_mode: "Markdown"
+  align: "center",
 }
         );
+
+        doc.moveDown();
+
+        doc.fontSize(14).text(
+          `Pedido #${order.id}`
+        );
+
+        doc.text(
+          `Estado: ${order.status}`
+        );
+
+        doc.text(
+          `Tipo: ${order.type}`
+        );
+
+        if (
+          order.type === "Remesa"
+        ) {
+
+          doc.text(
+            `Monto: $${order.amount}`
+          );
+
+          doc.text(
+            `Comisión: $${order.commission}`
+          );
+
+          doc.text(
+            `Total: $${order.total}`
+          );
+
+          doc.text(
+            `Beneficiario: ${order.name}`
+          );
+
+          doc.text(
+            `Teléfono: ${order.phone}`
+          );
+
+          doc.text(
+            `Dirección: ${order.address}`
+          );
+
+        } else {
+
+          doc.text(
+            `Número: ${order.phone}`
+          );
+
+          doc.text(
+            `Plan: ${order.plan}`
+          );
+
+          doc.text(
+            `Pago: ${order.payment}`
+          );
+
+          doc.text(
+            `Total: ${order.total}`
+          );
+        }
+
+        doc.moveDown();
+
+        doc.text(
+          "Gracias por utilizar JCS Remesas y Recargas"
+        );
+
+        doc.end();
+
+        setTimeout(async () => {
+
+          await bot.sendDocument(
+            order.clientId,
+            pdfPath,
+{
+  caption:
+`
+✅ PEDIDO CONFIRMADO
+
+🧾 Pedido:
+#${order.id}
+
+📦 Tipo:
+${order.type}
+
+🟢 Estado:
+Confirmado
+
+📄 Se adjunta comprobante PDF
+`,
+}
+          );
+
+          fs.unlink(
+            pdfPath,
+            () => {}
+          );
+
+        }, 2000);
 
         await bot.editMessageReplyMarkup(
           {
@@ -1235,9 +1340,7 @@ Confirmado
 
         orders.splice(index, 1);
 
-        if (query.message.photo) {
-
-          await bot.editMessageCaption(
+        await bot.editMessageText(
 `
 ❌ PEDIDO ELIMINADO
 
@@ -1252,27 +1355,7 @@ ${deletedOrder.type}
   message_id:
     query.message.message_id,
 }
-          );
-
-        } else {
-
-          await bot.editMessageText(
-`
-❌ PEDIDO ELIMINADO
-
-🧾 Pedido:
-#${deletedOrder.id}
-
-📦 Tipo:
-${deletedOrder.type}
-`,
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-          );
-        }
+        );
 
         await bot.answerCallbackQuery(
           query.id,
