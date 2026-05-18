@@ -18,6 +18,15 @@ if (!BOT_TOKEN || !ADMIN_ID) {
 const bot = new TelegramBot(BOT_TOKEN, {
   polling: true,
 });
+// ===============================
+// EMOJIS PREMIUM
+// ===============================
+
+const ZELLE_EMOJI =
+'<emoji id="5145710307707978556">💰</emoji>';
+
+const PAYPAL_EMOJI =
+'<emoji id="5361837213144671465">💙</emoji>';
 
 // ===============================
 // MEMORIA
@@ -414,8 +423,8 @@ $${user.total}
     keyboard: [
 
       [
-        "🅿️ PayPal",
-        "🏦 Zelle"
+        "${PAYPAL_EMOJI} PayPal",
+        "${ZELLE_EMOJI} Zelle"
       ],
 
       [
@@ -500,8 +509,8 @@ $${user.total}
     keyboard: [
 
       [
-        "🅿️ PayPal",
-        "🏦 Zelle"
+        "${PAYPAL_EMOJI} PayPal",
+        "${ZELLE_EMOJI} Zelle"
       ],
 
       [
@@ -522,7 +531,7 @@ $${user.total}
     if (
       user.step ===
         "remesa_payment" &&
-      text === "🅿️ PayPal"
+      text === "${PAYPAL_EMOJI} PayPal"
     ) {
 
       user.remesaPayment =
@@ -534,7 +543,7 @@ $${user.total}
       return bot.sendMessage(
         chatId,
 `
-🅿️ *PAYPAL*
+${PAYPAL_EMOJI} *PAYPAL*
 
 🔗 https://www.paypal.com/paypalme/josecastineira00
 
@@ -555,7 +564,7 @@ $${user.total}
     if (
       user.step ===
         "remesa_payment" &&
-      text === "🏦 Zelle"
+      text === "${ZELLE_EMOJI} Zelle"
     ) {
 
       user.remesaPayment =
@@ -567,7 +576,7 @@ $${user.total}
       return bot.sendMessage(
         chatId,
 `
-🏦 *ZELLE*
+${ZELLE_EMOJI} *ZELLE*
 
 👤 JCS LLC
 📱 +15026583021
@@ -712,7 +721,7 @@ $${user.total}
     keyboard: [
 
       [
-        "🅿️ Zelle",
+        "${ZELLE_EMOJI} Zelle",
         "🏦 Transferencia"
       ],
 
@@ -734,7 +743,7 @@ $${user.total}
     if (
       user.step === "payment" &&
       (
-        text === "🅿️ Zelle" ||
+        text === "${ZELLE_EMOJI} Zelle" ||
         text === "🏦 Transferencia"
       )
     ) {
@@ -749,7 +758,7 @@ $${user.total}
 
         // ---- ZELLE USD ----
 
-        if (text === "🅿️ Zelle") {
+        if (text === "${ZELLE_EMOJI} Zelle") {
 
           if (user.plan === "120 CUP") {
             user.total = "1 USD";
