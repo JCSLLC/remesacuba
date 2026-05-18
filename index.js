@@ -344,7 +344,7 @@ ${totalMoney}
 
       return bot.sendMessage(
         chatId,
-`💵 Seleccione un monto`,
+`💵 Seleccione o Escriba un monto`,
 {
   reply_markup: {
     keyboard: [
@@ -835,7 +835,7 @@ Ejemplo:
 `
 📱 ${user.rechargePhone}
 
-📸 Envíe captura
+📸 Envíe captura del Pago
 `
       );
     }
