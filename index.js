@@ -509,8 +509,8 @@ $${user.total}
     keyboard: [
 
       [
-        "${PAYPAL_EMOJI} PayPal",
-        "${ZELLE_EMOJI} Zelle"
+        '${PAYPAL_EMOJI} PayPal',
+        '${ZELLE_EMOJI} Zelle'
       ],
 
       [
