@@ -29,24 +29,24 @@ const users = {};
 const orders = [];
 
 // ===============================
-// PROMOS CUBATEL
+// PROMOS ETECSA
 // ===============================
 
-let cubatelPromos = [
-  "Recarga Internacional"
+let etecsaPromos = [
+  "🎁 Promo Internacional"
 ];
 
-async function updateCubatelPromos() {
+async function updateEtecsaPromos() {
 
   try {
 
     console.log(
-      "🔄 Actualizando promos Cubatel..."
+      "🔄 Actualizando promos ETECSA..."
     );
 
     const { data } =
       await axios.get(
-        "https://www.cubatel.com/",
+        "https://www.etecsa.cu/es/recargas",
 {
   headers: {
     "User-Agent":
@@ -64,16 +64,18 @@ async function updateCubatelPromos() {
       .each((i, el) => {
 
         const text =
-          $(el).text().trim();
+          $(el)
+            .text()
+            .trim();
 
         if (
           text.length > 20 &&
           (
-            text.includes("GB") ||
-            text.includes("Datos") ||
-            text.includes("Promoción") ||
             text.includes("Recarga") ||
-            text.includes("Internet")
+            text.includes("GB") ||
+            text.includes("Internet") ||
+            text.includes("Datos") ||
+            text.includes("Promoción")
           )
         ) {
 
@@ -94,31 +96,39 @@ async function updateCubatelPromos() {
 
     if (promos.length > 0) {
 
-      cubatelPromos =
+      etecsaPromos =
         promos.slice(0, 5);
 
       console.log(
-        "✅ Promos actualizadas"
+        "✅ Promos ETECSA actualizadas"
       );
     }
 
   } catch (err) {
 
     console.log(
-      "ERROR CUBATEL:",
+      "ERROR ETECSA:",
       err.message
     );
 
-  }
+    etecsaPromos = [
 
+      "🎁 Recarga Internacional",
+
+      "📱 Bono LTE + Datos",
+
+      "🌍 Promo GB Internacional"
+
+    ];
+  }
 }
 
-// actualizar promos al iniciar
-updateCubatelPromos();
+// actualizar al iniciar
+updateEtecsaPromos();
 
 // actualizar cada 6 horas
 setInterval(
-  updateCubatelPromos,
+  updateEtecsaPromos,
   1000 * 60 * 60 * 6
 );
 
@@ -239,197 +249,6 @@ bot.on("message", async (msg) => {
     }
 
     // ===============================
-    // ADMIN
-    // ===============================
-
-    if (text === "👮 Admin") {
-
-      if (
-        String(chatId) !==
-        String(ADMIN_ID)
-      ) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Acceso denegado"
-        );
-      }
-
-      return bot.sendMessage(
-        chatId,
-`
-👮 *PANEL ADMIN*
-
-📦 Pedidos:
-${orders.length}
-
-👥 Usuarios activos:
-${Object.keys(users).length}
-`,
-{
-  parse_mode: "Markdown",
-  reply_markup: {
-    keyboard: [
-
-      [
-        "📦 Pedidos",
-        "📊 Estadísticas"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // PEDIDOS ADMIN
-    // ===============================
-
-    if (
-      text === "📦 Pedidos" &&
-      String(chatId) === String(ADMIN_ID)
-    ) {
-
-      if (orders.length === 0) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ No hay pedidos"
-        );
-      }
-
-      for (const o of orders) {
-
-        let details = `
-━━━━━━━━━━━━━━━━━━
-📦 PEDIDO #${o.id}
-━━━━━━━━━━━━━━━━━━
-
-📌 Estado:
-${o.status}
-
-👤 Usuario:
-@${o.username}
-
-📦 Tipo:
-${o.type}
-`;
-
-        if (o.type === "Remesa") {
-
-          details += `
-
-💵 Monto:
-$${o.amount}
-
-📌 Comisión:
-$${o.commission}
-
-💰 Total:
-$${o.total}
-
-👤 Beneficiario:
-${o.name}
-
-📱 Teléfono:
-${o.phone}
-
-🏠 Dirección:
-${o.address}
-
-💳 Método:
-${o.payment}
-`;
-
-        } else {
-
-          details += `
-
-📱 Número:
-${o.phone}
-
-📦 Plan:
-${o.plan}
-
-💳 Pago:
-${o.payment}
-
-💰 Total:
-${o.total}
-`;
-        }
-
-        await bot.sendMessage(
-          chatId,
-          details,
-{
-  reply_markup: {
-    inline_keyboard: [
-
-      [
-        {
-          text: "✅ Confirmar",
-          callback_data:
-            `confirm_${o.id}`
-        },
-
-        {
-          text: "🗑 Eliminar",
-          callback_data:
-            `delete_${o.id}`
-        }
-      ]
-
-    ]
-  }
-}
-        );
-      }
-
-      return;
-    }
-
-    // ===============================
-    // ESTADISTICAS
-    // ===============================
-
-    if (
-      text === "📊 Estadísticas" &&
-      String(chatId) === String(ADMIN_ID)
-    ) {
-
-      let totalMoney = 0;
-
-      orders.forEach((o) => {
-        totalMoney += Number(
-          o.total || 0
-        );
-      });
-
-      return bot.sendMessage(
-        chatId,
-`
-📊 *ESTADÍSTICAS*
-
-📦 Pedidos:
-${orders.length}
-
-💰 Total generado:
-${totalMoney}
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-    }
-
-    // ===============================
     // REMESA
     // ===============================
 
@@ -440,7 +259,7 @@ ${totalMoney}
 
       return bot.sendMessage(
         chatId,
-`💵 Seleccione o Escriba un monto`,
+`💵 Seleccione o escriba un monto`,
 {
   reply_markup: {
     keyboard: [
@@ -452,152 +271,6 @@ ${totalMoney}
 
       [
         "✍️ Personalizado"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // MONTO REMESA
-    // ===============================
-
-    if (user.step === "amount_select") {
-
-      if (
-        text === "50" ||
-        text === "100"
-      ) {
-
-        const amount =
-          parseFloat(text);
-
-        user.amount = amount;
-
-        const commission =
-          calculateCommission(amount);
-
-        user.commission = commission;
-        user.total =
-          amount + commission;
-
-        user.step =
-          "remesa_payment";
-
-        return bot.sendMessage(
-          chatId,
-`
-💵 Monto:
-$${amount}
-
-📌 Comisión:
-$${commission}
-
-💰 Total:
-$${user.total}
-
-💳 Método de pago
-`,
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🅿️ PayPal",
-        "🏦 Zelle"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-        );
-      }
-
-      if (
-        text === "✍️ Personalizado"
-      ) {
-
-        user.step = "amount";
-
-        return bot.sendMessage(
-          chatId,
-`
-✍️ Envíe monto personalizado
-
-Ejemplo:
-75
-150
-`
-        );
-      }
-    }
-
-    // ===============================
-    // MONTO PERSONALIZADO
-    // ===============================
-
-    if (user.step === "amount") {
-
-      const amount =
-        parseFloat(text);
-
-      if (
-        isNaN(amount) ||
-        amount <= 0
-      ) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Monto inválido"
-        );
-      }
-
-      user.amount = amount;
-
-      const commission =
-        calculateCommission(amount);
-
-      user.commission = commission;
-
-      user.total =
-        amount + commission;
-
-      user.step =
-        "remesa_payment";
-
-      return bot.sendMessage(
-        chatId,
-`
-💵 Monto:
-$${amount}
-
-📌 Comisión:
-$${commission}
-
-💰 Total:
-$${user.total}
-
-💳 Método de pago
-`,
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🅿️ PayPal",
-        "🏦 Zelle"
       ],
 
       [
@@ -692,7 +365,7 @@ $${user.total}
       user.step = "plan";
 
       const keyboard =
-        cubatelPromos.map(
+        etecsaPromos.map(
           (promo) => [promo]
         );
 
@@ -705,7 +378,7 @@ $${user.total}
 `
 🌍 Promociones Internacionales
 
-⚡ Actualizadas automáticamente desde Cubatel
+⚡ Actualizadas desde ETECSA
 `,
 {
   reply_markup: {
@@ -751,10 +424,232 @@ $${user.total}
       );
     }
 
+    // ===============================
+    // PAGO RECARGA
+    // ===============================
+
+    if (
+      user.step === "payment" &&
+      (
+        text === "🅿️ Zelle" ||
+        text === "🏦 Transferencia"
+      )
+    ) {
+
+      user.payment = text;
+
+      if (user.type === "Recarga Nacional") {
+
+        if (text === "🅿️ Zelle") {
+
+          if (user.plan === "120 CUP") {
+            user.total = "1 USD";
+          }
+
+          if (user.plan === "240 CUP") {
+            user.total = "1.90 USD";
+          }
+
+          if (user.plan === "360 CUP") {
+            user.total = "2.70 USD";
+          }
+
+        }
+
+        if (text === "🏦 Transferencia") {
+
+          if (user.plan === "120 CUP") {
+            user.total = "700 CUP";
+          }
+
+          if (user.plan === "240 CUP") {
+            user.total = "1500 CUP";
+          }
+
+          if (user.plan === "360 CUP") {
+            user.total = "2000 CUP";
+          }
+
+        }
+
+      } else {
+
+        user.total =
+          "Según promoción";
+      }
+
+      user.step =
+        "phone_recharge";
+
+      return bot.sendMessage(
+        chatId,
+`
+💳 Método:
+${user.payment}
+
+💰 Total:
+${user.total}
+
+📱 Envíe número cubano
+
+Ejemplo:
+55112233
+`
+      );
+    }
+
+    // ===============================
+    // TELEFONO RECARGA
+    // ===============================
+
+    if (
+      user.step ===
+      "phone_recharge"
+    ) {
+
+      if (!isValidPhone(text)) {
+
+        return bot.sendMessage(
+          chatId,
+          "❌ Número inválido"
+        );
+      }
+
+      user.rechargePhone =
+        `+53${text}`;
+
+      user.step = "screenshot";
+
+      return bot.sendMessage(
+        chatId,
+`
+📱 ${user.rechargePhone}
+
+📸 Envíe captura del Pago
+`
+      );
+    }
+
   } catch (err) {
 
     console.log(
       "ERROR:",
+      err.message
+    );
+
+  }
+
+});
+
+// ===============================
+// FOTOS
+// ===============================
+
+bot.on("photo", async (msg) => {
+
+  try {
+
+    const chatId =
+      msg.chat.id;
+
+    if (!users[chatId]) return;
+
+    const user =
+      users[chatId];
+
+    const photo =
+      msg.photo[
+        msg.photo.length - 1
+      ]?.file_id;
+
+    if (!photo) return;
+
+    if (
+      user.step === "screenshot"
+    ) {
+
+      const orderId =
+        Date.now();
+
+      orders.push({
+
+        id: orderId,
+
+        status: "Pendiente",
+
+        clientId: chatId,
+
+        username:
+          msg.from.username ||
+          "Sin username",
+
+        type: user.type,
+
+        phone:
+          user.rechargePhone,
+
+        plan: user.plan,
+
+        payment:
+          user.payment,
+
+        total: user.total,
+
+      });
+
+      try {
+
+        await bot.sendPhoto(
+          ADMIN_ID,
+          photo,
+{
+  caption:
+`
+🔥 NUEVA RECARGA
+
+🧾 Pedido:
+#${orderId}
+
+📱 ${user.rechargePhone}
+
+📦 ${user.plan}
+
+💳 ${user.payment}
+
+💰 ${user.total}
+`
+}
+        );
+
+      } catch (err) {
+
+        console.log(
+          "ADMIN ERROR:",
+          err.message
+        );
+
+      }
+
+      await bot.sendMessage(
+        chatId,
+`
+✅ RECARGA RECIBIDA
+
+🧾 Pedido:
+#${orderId}
+
+🕒 Estado:
+Pendiente
+`
+      );
+
+      delete users[chatId];
+    }
+
+  } catch (err) {
+
+    console.log(
+      "ERROR FOTO:",
       err.message
     );
 
