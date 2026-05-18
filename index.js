@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
-const cheerio = require("cheerio");
+const storeApi = require("./storeApi"); // 👈 QVAPAY STORE
 
 // ===============================
 // CONFIG
@@ -12,9 +12,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
 
 if (!BOT_TOKEN || !ADMIN_ID) {
-  throw new Error(
-    "❌ Faltan BOT_TOKEN o ADMIN_ID en .env"
-  );
+  throw new Error("❌ Faltan BOT_TOKEN o ADMIN_ID en .env");
 }
 
 const bot = new TelegramBot(BOT_TOKEN, {
@@ -29,96 +27,35 @@ const users = {};
 const orders = [];
 
 // ===============================
-// PROMOS ETECSA
+// PROMOS (AHORA QVAPAY)
 // ===============================
 
 let etecsaPromos = [
-  "🎁 Promo Internacional"
+  "🌍 Recarga Internacional"
 ];
 
+// 🔥 AHORA USAMOS QVAPAY STORE
 async function updateEtecsaPromos() {
-
   try {
 
-    console.log(
-      "🔄 Actualizando promos ETECSA..."
-    );
+    console.log("🔄 Cargando recargas QvaPay...");
 
-    const { data } =
-      await axios.get(
-        "https://www.etecsa.cu/es/recargas",
-{
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0",
-  },
-}
+    const res = await storeApi.getTopupCatalog();
+
+    if (res.success && res.data?.length) {
+      etecsaPromos = res.data.slice(0, 5).map(p =>
+        `${p.name} - $${p.price}`
       );
-
-    const $ = cheerio.load(data);
-
-    const promos = [];
-
-    $("body")
-      .find("*")
-      .each((i, el) => {
-
-        const text =
-          $(el)
-            .text()
-            .trim();
-
-        if (
-          text.length > 20 &&
-          (
-            text.includes("Recarga") ||
-            text.includes("GB") ||
-            text.includes("Internet") ||
-            text.includes("Datos") ||
-            text.includes("Promoción")
-          )
-        ) {
-
-          const clean =
-            text
-              .replace(/\s+/g, " ")
-              .trim();
-
-          if (
-            !promos.includes(clean)
-          ) {
-
-            promos.push(clean);
-          }
-        }
-
-      });
-
-    if (promos.length > 0) {
-
-      etecsaPromos =
-        promos.slice(0, 5);
-
-      console.log(
-        "✅ Promos ETECSA actualizadas"
-      );
+      console.log("✅ Promos QvaPay cargadas");
     }
 
   } catch (err) {
-
-    console.log(
-      "ERROR ETECSA:",
-      err.message
-    );
+    console.log("ERROR QVAPAY:", err.message);
 
     etecsaPromos = [
-
       "🎁 Recarga Internacional",
-
-      "📱 Bono LTE + Datos",
-
-      "🌍 Promo GB Internacional"
-
+      "📱 Bono LTE",
+      "🌍 Promo Datos"
     ];
   }
 }
@@ -127,21 +64,16 @@ async function updateEtecsaPromos() {
 updateEtecsaPromos();
 
 // actualizar cada 6 horas
-setInterval(
-  updateEtecsaPromos,
-  1000 * 60 * 60 * 6
-);
+setInterval(updateEtecsaPromos, 1000 * 60 * 60 * 6);
 
 // ===============================
 // FUNCIONES
 // ===============================
 
 function calculateCommission(amount) {
-
   if (amount >= 1 && amount <= 49) {
     return 5;
   }
-
   return amount * 0.1;
 }
 
@@ -230,9 +162,7 @@ bot.on("message", async (msg) => {
     // ===============================
 
     if (text === "⬅️ Volver") {
-
       users[chatId] = {};
-
       return mainMenu(chatId);
     }
 
@@ -241,150 +171,84 @@ bot.on("message", async (msg) => {
     // ===============================
 
     if (text === "🆘 Soporte") {
-
-      return bot.sendMessage(
-        chatId,
-        "🆘 Soporte:\n\nhttps://t.me/JCS_LLC"
-      );
+      return bot.sendMessage(chatId, "https://t.me/JCS_LLC");
     }
 
     // ===============================
-    // REMESA
-    // ===============================
-
-    if (text === "💵 Remesa") {
-
-      user.type = "Remesa";
-      user.step = "amount_select";
-
-      return bot.sendMessage(
-        chatId,
-`💵 Seleccione o escriba un monto`,
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "50",
-        "100"
-      ],
-
-      [
-        "✍️ Personalizado"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
-    }
-
-    // ===============================
-    // RECARGA
+    // RECARGA MENU
     // ===============================
 
     if (text === "📱 Recarga") {
-
-      return bot.sendMessage(
-        chatId,
-        "📱 Seleccione tipo",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🇨🇺 Nacional",
-        "🌍 Internacional"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
-      );
+      return bot.sendMessage(chatId, "📱 Seleccione tipo", {
+        reply_markup: {
+          keyboard: [
+            ["🇨🇺 Nacional", "🌍 Internacional"],
+            ["⬅️ Volver"]
+          ],
+          resize_keyboard: true
+        }
+      });
     }
 
     // ===============================
-    // RECARGA NACIONAL
+    // RECARGA NACIONAL (igual)
     // ===============================
 
     if (text === "🇨🇺 Nacional") {
 
-      user.type =
-        "Recarga Nacional";
-
+      user.type = "Recarga Nacional";
       user.step = "plan";
 
-      return bot.sendMessage(
-        chatId,
+      return bot.sendMessage(chatId,
         "📦 Seleccione plan",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "120 CUP",
-        "240 CUP"
-      ],
-
-      [
-        "360 CUP"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
+        {
+          reply_markup: {
+            keyboard: [
+              ["120 CUP", "240 CUP"],
+              ["360 CUP"],
+              ["⬅️ Volver"]
+            ],
+            resize_keyboard: true,
+          }
+        }
       );
     }
 
     // ===============================
-    // RECARGA INTERNACIONAL
+    // 🌍 INTERNACIONAL (AHORA QVAPAY STORE)
     // ===============================
 
-    if (
-      text === "🌍 Internacional"
-    ) {
+    if (text === "🌍 Internacional") {
 
-      user.type =
-        "Recarga Internacional";
-
+      user.type = "Recarga Internacional";
       user.step = "plan";
 
-      const keyboard =
-        etecsaPromos.map(
-          (promo) => [promo]
-        );
+      const res = await storeApi.getTopupCatalog();
 
-      keyboard.push(
-        ["⬅️ Volver"]
-      );
+      if (!res.success || !res.data?.length) {
+        return bot.sendMessage(chatId, "❌ No hay recargas disponibles");
+      }
+
+      user.catalog = res.data;
+
+      const keyboard = res.data.slice(0, 12).map(p => [
+        `${p.name} - $${p.price}`
+      ]);
+
+      keyboard.push(["⬅️ Volver"]);
 
       return bot.sendMessage(
         chatId,
 `
-🌍 Promociones Internacionales
+🌍 Recargas Internacionales
 
-⚡ Actualizadas desde ETECSA
+⚡ Fuente: QvaPay Store
 `,
 {
   reply_markup: {
     keyboard,
-    resize_keyboard: true,
-  },
+    resize_keyboard: true
+  }
 }
       );
     }
@@ -393,150 +257,110 @@ bot.on("message", async (msg) => {
     // PLANES
     // ===============================
 
-    if (
-      user.step === "plan"
-    ) {
+    if (user.step === "plan") {
 
       user.plan = text;
-
       user.step = "payment";
 
-      return bot.sendMessage(
-        chatId,
+      return bot.sendMessage(chatId,
         "💳 Método de pago",
-{
-  reply_markup: {
-    keyboard: [
-
-      [
-        "🅿️ Zelle",
-        "🏦 Transferencia"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
-    resize_keyboard: true,
-  },
-}
+        {
+          reply_markup: {
+            keyboard: [
+              ["🅿️ Zelle", "🏦 Transferencia"],
+              ["⬅️ Volver"]
+            ],
+            resize_keyboard: true
+          }
+        }
       );
     }
 
     // ===============================
-    // PAGO RECARGA
+    // PAGO
     // ===============================
 
     if (
       user.step === "payment" &&
-      (
-        text === "🅿️ Zelle" ||
-        text === "🏦 Transferencia"
-      )
+      (text === "🅿️ Zelle" || text === "🏦 Transferencia")
     ) {
 
       user.payment = text;
 
-      if (user.type === "Recarga Nacional") {
+      user.total = "Según QvaPay";
 
-        if (text === "🅿️ Zelle") {
+      user.step = "phone_recharge";
 
-          if (user.plan === "120 CUP") {
-            user.total = "1 USD";
-          }
+      return bot.sendMessage(chatId, `
+💳 Método: ${text}
 
-          if (user.plan === "240 CUP") {
-            user.total = "1.90 USD";
-          }
+💰 Total: ${user.total}
 
-          if (user.plan === "360 CUP") {
-            user.total = "2.70 USD";
-          }
-
-        }
-
-        if (text === "🏦 Transferencia") {
-
-          if (user.plan === "120 CUP") {
-            user.total = "700 CUP";
-          }
-
-          if (user.plan === "240 CUP") {
-            user.total = "1500 CUP";
-          }
-
-          if (user.plan === "360 CUP") {
-            user.total = "2000 CUP";
-          }
-
-        }
-
-      } else {
-
-        user.total =
-          "Según promoción";
-      }
-
-      user.step =
-        "phone_recharge";
-
-      return bot.sendMessage(
-        chatId,
-`
-💳 Método:
-${user.payment}
-
-💰 Total:
-${user.total}
-
-📱 Envíe número cubano
-
-Ejemplo:
-55112233
-`
-      );
+📱 Envíe número
+      `);
     }
 
     // ===============================
-    // TELEFONO RECARGA
+    // TELEFONO
     // ===============================
 
-    if (
-      user.step ===
-      "phone_recharge"
-    ) {
+    if (user.step === "phone_recharge") {
 
       if (!isValidPhone(text)) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Número inválido"
-        );
+        return bot.sendMessage(chatId, "❌ Número inválido");
       }
 
-      user.rechargePhone =
-        `+53${text}`;
+      user.rechargePhone = `+53${text}`;
 
-      user.step = "screenshot";
+      const selected = user.catalog.find(p =>
+        user.plan.includes(p.name)
+      ) || user.catalog[0];
 
-      return bot.sendMessage(
-        chatId,
-`
+      let result;
+
+      try {
+
+        if (user.type === "Recarga Nacional") {
+          result = await storeApi.purchasePhonePackage({
+            phone_package_id: selected.id,
+            phone_number: user.rechargePhone
+          });
+        } else {
+          result = await storeApi.purchaseTopup({
+            offer_id: selected.id,
+            phone_number: user.rechargePhone,
+            country: selected.country || "CU"
+          });
+        }
+
+        if (!result.success) {
+          return bot.sendMessage(chatId, "❌ Error en QvaPay");
+        }
+
+        orders.push({
+          id: Date.now(),
+          user: chatId,
+          type: user.type,
+          phone: user.rechargePhone
+        });
+
+        await bot.sendMessage(chatId, `
+✅ RECARGA ENVIADA
+
 📱 ${user.rechargePhone}
+📦 ${selected.name}
+        `);
 
-📸 Envíe captura del Pago
-`
-      );
+        delete users[chatId];
+
+      } catch (err) {
+        console.log(err.message);
+        bot.sendMessage(chatId, "❌ Error interno");
+      }
     }
 
   } catch (err) {
-
-    console.log(
-      "ERROR:",
-      err.message
-    );
-
+    console.log("ERROR:", err.message);
   }
 
 });
@@ -549,110 +373,12 @@ bot.on("photo", async (msg) => {
 
   try {
 
-    const chatId =
-      msg.chat.id;
+    const chatId = msg.chat.id;
 
     if (!users[chatId]) return;
 
-    const user =
-      users[chatId];
-
-    const photo =
-      msg.photo[
-        msg.photo.length - 1
-      ]?.file_id;
-
-    if (!photo) return;
-
-    if (
-      user.step === "screenshot"
-    ) {
-
-      const orderId =
-        Date.now();
-
-      orders.push({
-
-        id: orderId,
-
-        status: "Pendiente",
-
-        clientId: chatId,
-
-        username:
-          msg.from.username ||
-          "Sin username",
-
-        type: user.type,
-
-        phone:
-          user.rechargePhone,
-
-        plan: user.plan,
-
-        payment:
-          user.payment,
-
-        total: user.total,
-
-      });
-
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          photo,
-{
-  caption:
-`
-🔥 NUEVA RECARGA
-
-🧾 Pedido:
-#${orderId}
-
-📱 ${user.rechargePhone}
-
-📦 ${user.plan}
-
-💳 ${user.payment}
-
-💰 ${user.total}
-`
-}
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
-
-      await bot.sendMessage(
-        chatId,
-`
-✅ RECARGA RECIBIDA
-
-🧾 Pedido:
-#${orderId}
-
-🕒 Estado:
-Pendiente
-`
-      );
-
-      delete users[chatId];
-    }
-
   } catch (err) {
-
-    console.log(
-      "ERROR FOTO:",
-      err.message
-    );
-
+    console.log("ERROR FOTO:", err.message);
   }
 
 });
@@ -661,18 +387,8 @@ Pendiente
 // POLLING ERROR
 // ===============================
 
-bot.on(
-  "polling_error",
-  (err) => {
+bot.on("polling_error", (err) => {
+  console.log("POLLING ERROR:", err.message);
+});
 
-    console.log(
-      "POLLING ERROR:",
-      err.message
-    );
-
-  }
-);
-
-console.log(
-  "✅ BOT INICIADO"
-);
+console.log("✅ BOT ACTUALIZADO CON QVAPAY STORE");
