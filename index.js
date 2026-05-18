@@ -1,6 +1,8 @@
 require("dotenv").config();
 
 const TelegramBot = require("node-telegram-bot-api");
+const axios = require("axios");
+const cheerio = require("cheerio");
 
 // ===============================
 // CONFIG
@@ -25,6 +27,112 @@ const bot = new TelegramBot(BOT_TOKEN, {
 
 const users = {};
 const orders = [];
+
+// ===============================
+// CACHE PROMOS CUBATEL
+// ===============================
+
+let cubatelPromos = [
+  "Recarga Internacional"
+];
+
+let lastPromoUpdate = 0;
+
+// ===============================
+// ACTUALIZAR PROMOS
+// ===============================
+
+async function updateCubatelPromos() {
+
+  try {
+
+    console.log(
+      "🔄 Actualizando promos Cubatel..."
+    );
+
+    const { data } =
+      await axios.get(
+        "https://www.cubatel.com/",
+{
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0",
+  },
+}
+      );
+
+    const $ = cheerio.load(data);
+
+    const promos = [];
+
+    $("body")
+      .find("*")
+      .each((i, el) => {
+
+        const text =
+          $(el).text().trim();
+
+        if (
+          text.length > 20 &&
+          (
+            text.includes("GB") ||
+            text.includes("Datos") ||
+            text.includes("Promoción") ||
+            text.includes("Recarga") ||
+            text.includes("Internet")
+          )
+        ) {
+
+          const clean =
+            text
+              .replace(/\s+/g, " ")
+              .trim();
+
+          if (
+            !promos.includes(clean)
+          ) {
+
+            promos.push(clean);
+          }
+        }
+
+      });
+
+    if (promos.length > 0) {
+
+      cubatelPromos =
+        promos.slice(0, 6);
+
+      lastPromoUpdate =
+        Date.now();
+
+      console.log(
+        "✅ Promos actualizadas"
+      );
+
+    }
+
+  } catch (err) {
+
+    console.log(
+      "ERROR CUBATEL:",
+      err.message
+    );
+
+  }
+
+}
+
+// ===============================
+// AUTO UPDATE CADA 6 HORAS
+// ===============================
+
+updateCubatelPromos();
+
+setInterval(
+  updateCubatelPromos,
+  1000 * 60 * 60 * 6
+);
 
 // ===============================
 // FUNCIONES
@@ -169,6 +277,9 @@ ${orders.length}
 
 👥 Usuarios activos:
 ${Object.keys(users).length}
+
+🌍 Promos internacionales:
+${cubatelPromos.length}
 `,
 {
   parse_mode: "Markdown",
@@ -662,23 +773,25 @@ $${user.total}
 
       user.step = "plan";
 
+      const keyboard =
+        cubatelPromos.map(
+          (promo) => [promo]
+        );
+
+      keyboard.push(
+        ["⬅️ Volver"]
+      );
+
       return bot.sendMessage(
         chatId,
-        "🌍 Seleccione promoción",
+`
+🌍 Promociones Internacionales
+
+⚡ Actualizadas automáticamente desde Cubatel
+`,
 {
   reply_markup: {
-    keyboard: [
-
-      [
-        "Promo 1",
-        "Promo 2"
-      ],
-
-      [
-        "⬅️ Volver"
-      ],
-
-    ],
+    keyboard,
     resize_keyboard: true,
   },
 }
@@ -690,14 +803,7 @@ $${user.total}
     // ===============================
 
     if (
-      user.step === "plan" &&
-      (
-        text === "120 CUP" ||
-        text === "240 CUP" ||
-        text === "360 CUP" ||
-        text === "Promo 1" ||
-        text === "Promo 2"
-      )
+      user.step === "plan"
     ) {
 
       user.plan = text;
@@ -747,8 +853,6 @@ $${user.total}
 
       if (user.type === "Recarga Nacional") {
 
-        // ---- ZELLE USD ----
-
         if (text === "🅿️ Zelle") {
 
           if (user.plan === "120 CUP") {
@@ -764,8 +868,6 @@ $${user.total}
           }
 
         }
-
-        // ---- TRANSFERENCIA CUP ----
 
         if (text === "🏦 Transferencia") {
 
@@ -785,7 +887,8 @@ $${user.total}
 
       } else {
 
-        user.total = "Pendiente";
+        user.total =
+          "Según promoción";
       }
 
       user.step =
@@ -840,148 +943,6 @@ Ejemplo:
       );
     }
 
-    // ===============================
-    // NOMBRE REMESA
-    // ===============================
-
-    if (user.step === "name") {
-
-      user.name = text;
-
-      user.step = "phone";
-
-      return bot.sendMessage(
-        chatId,
-        "📱 Envíe teléfono"
-      );
-    }
-
-    // ===============================
-    // TELEFONO REMESA
-    // ===============================
-
-    if (user.step === "phone") {
-
-      if (!isValidPhone(text)) {
-
-        return bot.sendMessage(
-          chatId,
-          "❌ Número inválido"
-        );
-      }
-
-      user.phone = `+53${text}`;
-
-      user.step = "address";
-
-      return bot.sendMessage(
-        chatId,
-        "🏠 Envíe dirección"
-      );
-    }
-
-    // ===============================
-    // DIRECCION REMESA
-    // ===============================
-
-    if (user.step === "address") {
-
-      user.address = text;
-
-      const orderId = Date.now();
-
-      orders.push({
-
-        id: orderId,
-
-        status: "Pendiente",
-
-        clientId: chatId,
-
-        username:
-          msg.from.username ||
-          "Sin username",
-
-        type: "Remesa",
-
-        amount: user.amount,
-
-        commission:
-          user.commission,
-
-        total: user.total,
-
-        payment:
-          user.remesaPayment,
-
-        name: user.name,
-
-        phone: user.phone,
-
-        address: user.address,
-
-      });
-
-      try {
-
-        await bot.sendPhoto(
-          ADMIN_ID,
-          user.remesaPhoto,
-{
-  caption:
-`
-🔥 NUEVA REMESA
-
-🧾 Pedido:
-#${orderId}
-
-💵 Monto:
-$${user.amount}
-
-💰 Total:
-$${user.total}
-
-👤 ${user.name}
-
-📱 ${user.phone}
-
-🏠 ${user.address}
-
-💳 ${user.remesaPayment}
-`
-}
-        );
-
-      } catch (err) {
-
-        console.log(
-          "ADMIN ERROR:",
-          err.message
-        );
-
-      }
-
-      await bot.sendMessage(
-        chatId,
-`
-✅ REMESA RECIBIDA
-
-🧾 Pedido:
-#${orderId}
-
-🕒 Estado:
-Pendiente
-`,
-{
-  parse_mode: "Markdown"
-}
-      );
-
-      delete users[chatId];
-
-      return;
-    }
-
   } catch (err) {
 
     console.log(
@@ -1017,30 +978,6 @@ bot.on("photo", async (msg) => {
     if (!photo) return;
 
     // ===============================
-    // FOTO REMESA
-    // ===============================
-
-    if (
-      user.step ===
-      "remesa_screenshot"
-    ) {
-
-      user.remesaPhoto =
-        photo;
-
-      user.step = "name";
-
-      return bot.sendMessage(
-        chatId,
-`
-✅ Captura recibida
-
-👤 Envíe nombre del familiar
-`
-      );
-    }
-
-    // ===============================
     // FOTO RECARGA
     // ===============================
 
@@ -1063,7 +1000,7 @@ bot.on("photo", async (msg) => {
           msg.from.username ||
           "Sin username",
 
-        type: "Recarga",
+        type: user.type,
 
         phone:
           user.rechargePhone,
@@ -1163,10 +1100,6 @@ bot.on(
       const data =
         query.data;
 
-      // ===============================
-      // CONFIRMAR
-      // ===============================
-
       if (
         data.startsWith(
           "confirm_"
@@ -1219,116 +1152,11 @@ Confirmado
 }
         );
 
-        await bot.editMessageReplyMarkup(
-          {
-            inline_keyboard: [
-              [
-                {
-                  text:
-                    "✅ Confirmado",
-                  callback_data:
-                    "confirmed",
-                },
-              ],
-            ],
-          },
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-        );
-
         await bot.answerCallbackQuery(
           query.id,
           {
             text:
               "Pedido confirmado",
-          }
-        );
-      }
-
-      // ===============================
-      // ELIMINAR PEDIDO
-      // ===============================
-
-      if (
-        data.startsWith(
-          "delete_"
-        )
-      ) {
-
-        const orderId =
-          Number(
-            data.split("_")[1]
-          );
-
-        const index =
-          orders.findIndex(
-            (o) =>
-              o.id === orderId
-          );
-
-        if (index === -1) {
-
-          return bot.answerCallbackQuery(
-            query.id,
-            {
-              text:
-                "Pedido no encontrado",
-            }
-          );
-        }
-
-        const deletedOrder =
-          orders[index];
-
-        orders.splice(index, 1);
-
-        if (query.message.photo) {
-
-          await bot.editMessageCaption(
-`
-❌ PEDIDO ELIMINADO
-
-🧾 Pedido:
-#${deletedOrder.id}
-
-📦 Tipo:
-${deletedOrder.type}
-`,
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-          );
-
-        } else {
-
-          await bot.editMessageText(
-`
-❌ PEDIDO ELIMINADO
-
-🧾 Pedido:
-#${deletedOrder.id}
-
-📦 Tipo:
-${deletedOrder.type}
-`,
-{
-  chat_id: chatId,
-  message_id:
-    query.message.message_id,
-}
-          );
-        }
-
-        await bot.answerCallbackQuery(
-          query.id,
-          {
-            text:
-              "Pedido eliminado",
           }
         );
       }
@@ -1344,10 +1172,6 @@ ${deletedOrder.type}
 
   }
 );
-
-// ===============================
-// POLLING ERROR
-// ===============================
 
 bot.on(
   "polling_error",
