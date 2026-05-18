@@ -9,10 +9,15 @@ const axios = require("axios");
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
+const QVAPAY_TOKEN = process.env.QVAPAY_TOKEN;
 
-if (!BOT_TOKEN || !ADMIN_ID) {
+if (
+  !BOT_TOKEN ||
+  !ADMIN_ID ||
+  !QVAPAY_TOKEN
+) {
   throw new Error(
-    "❌ Faltan BOT_TOKEN o ADMIN_ID en .env"
+    "❌ Faltan BOT_TOKEN, ADMIN_ID o QVAPAY_TOKEN en .env"
   );
 }
 
@@ -56,16 +61,56 @@ async function getInternationalPackages() {
       "https://api.qvapay.com/store/phone_package"
     );
 
-    return response.data;
+    return response.data.phone_packages || [];
 
   } catch (err) {
 
     console.log(
       "QvaPay Error:",
-      err.message
+      err.response?.data || err.message
     );
 
     return [];
+  }
+}
+
+// ===============================
+// COMPRAR PAQUETE INTERNACIONAL
+// ===============================
+
+async function buyInternationalPackage(
+  packageId,
+  phone
+) {
+
+  try {
+
+    const response = await axios.post(
+      "https://api.qvapay.com/store/phone_package",
+      {
+        phone_package_id: packageId,
+        phone_number: phone
+      },
+      {
+        headers: {
+          Authorization:
+            `Bearer ${QVAPAY_TOKEN}`,
+          "Content-Type":
+            "application/json"
+        }
+      }
+    );
+
+    return response.data;
+
+  } catch (err) {
+
+    console.log(
+      "BUY PACKAGE ERROR:",
+      err.response?.data || err.message
+    );
+
+    return null;
   }
 }
 
@@ -611,7 +656,7 @@ $${user.total}
     keyboard: [
 
       [
-        "🅿️ Zelle",
+        "🏦 Zelle",
         "🏦 Transferencia"
       ],
 
@@ -633,7 +678,7 @@ $${user.total}
     if (
       user.step === "payment" &&
       (
-        text === "🅿️ Zelle" ||
+        text === "🏦 Zelle" ||
         text === "🏦 Transferencia"
       )
     ) {
@@ -642,7 +687,7 @@ $${user.total}
 
       if (user.type === "Recarga Nacional") {
 
-        if (text === "🅿️ Zelle") {
+        if (text === "🏦 Zelle") {
 
           if (user.plan === "120 CUP") {
             user.total = "1 USD";
@@ -713,6 +758,36 @@ ${user.total}
       user.rechargePhone =
         `+53${text}`;
 
+      // ===============================
+      // ENVIAR RECARGA INTERNACIONAL
+      // ===============================
+
+      let qvapayResponse = null;
+
+      if (
+        user.type ===
+        "Recarga Internacional"
+      ) {
+
+        qvapayResponse =
+          await buyInternationalPackage(
+            user.packageData.id,
+            user.rechargePhone
+          );
+
+        if (!qvapayResponse) {
+
+          return bot.sendMessage(
+            chatId,
+`
+❌ Error enviando la recarga internacional
+
+Intente nuevamente más tarde
+`
+          );
+        }
+      }
+
       const orderId =
         Date.now();
 
@@ -720,7 +795,11 @@ ${user.total}
 
         id: orderId,
 
-        status: "Pendiente",
+        status:
+          user.type ===
+          "Recarga Internacional"
+            ? "Procesada"
+            : "Pendiente",
 
         clientId: chatId,
 
@@ -739,6 +818,10 @@ ${user.total}
           user.payment,
 
         total: user.total,
+
+        tx:
+          qvapayResponse?.transaction_uuid ||
+          null
 
       });
 
@@ -762,6 +845,13 @@ ${user.total}
 💳 ${user.payment}
 
 💰 ${user.total}
+
+${
+  qvapayResponse
+    ? `🔗 TX:
+${qvapayResponse.transaction_uuid}`
+    : ""
+}
 `
 }
         );
@@ -783,8 +873,26 @@ ${user.total}
 🧾 Pedido:
 #${orderId}
 
+📱 Número:
+${user.rechargePhone}
+
+📦 Plan:
+${user.plan}
+
 🕒 Estado:
-Pendiente
+${
+  user.type ===
+  "Recarga Internacional"
+    ? "Procesada automáticamente"
+    : "Pendiente"
+}
+
+${
+  qvapayResponse
+    ? `🔗 TX:
+${qvapayResponse.transaction_uuid}`
+    : ""
+}
 `
       );
 
